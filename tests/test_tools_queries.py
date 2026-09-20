@@ -475,7 +475,7 @@ class TestToolsRegistry:
     def test_tools_is_a_list(self):
         assert isinstance(TOOLS, list)
 
-    def test_all_five_tools_registered(self):
+    def test_all_tools_registered(self):
         names = {t["function"]["name"] for t in TOOLS}
         expected = {
             "get_top_games_by_copies_sold",
@@ -484,6 +484,8 @@ class TestToolsRegistry:
             "get_games_by_price_range",
             "get_review_score_distribution",
             "get_games_by_release_date",
+            "get_schema_info",
+            "run_sql_query",
         }
         assert names == expected
 

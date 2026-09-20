@@ -40,6 +40,8 @@ from game_market_chatbot.tools.queries import (
     get_publisher_class_breakdown,
     get_review_score_distribution,
     get_top_games_by_copies_sold,
+    get_schema_info,
+    run_sql_query,
 )
 
 # ---------------------------------------------------------------------------
@@ -233,6 +235,57 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_schema_info",
+            "description": (
+                "Return a plain-text description of the steam_games database schema, "
+                "including column names, types, index definitions, and critical notes "
+                "on JSON array columns and millisecond timestamps. "
+                "Call this before writing a run_sql_query call if you are unsure "
+                "about column names or data formats."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_sql_query",
+            "description": (
+                "Execute a raw read-only SELECT statement against the steam_games "
+                "database and return up to 500 rows as a list of dicts. "
+                "Use this as a fallback for complex or ad-hoc questions that the "
+                "predefined tools cannot answer. "
+                "IMPORTANT — JSON array columns: genres, developers, and publishers "
+                "are stored as JSON text (e.g. '[\"Action\",\"RPG\"]'). Always filter "
+                "them with LIKE, e.g. WHERE genres LIKE '%RPG%'. Never use equality. "
+                "IMPORTANT — timestamps: release_date, first_release_date, "
+                "ea_release_date, and ingested_at are Unix timestamps in MILLISECONDS. "
+                "Divide by 1000 before passing to SQLite date functions, e.g. "
+                "strftime('%Y', release_date / 1000, 'unixepoch')."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sql": {
+                        "type": "string",
+                        "description": (
+                            "A read-only SELECT statement. Must not contain "
+                            "INSERT, UPDATE, DELETE, DROP, CREATE, ALTER, "
+                            "REPLACE, TRUNCATE, ATTACH, DETACH, or PRAGMA."
+                        ),
+                    },
+                },
+                "required": ["sql"],
+            },
+        },
+    },
 ]
 
 # ---------------------------------------------------------------------------
@@ -246,6 +299,8 @@ _FUNCTION_MAP = {
     "get_games_by_price_range":      get_games_by_price_range,
     "get_review_score_distribution": get_review_score_distribution,
     "get_games_by_release_date":     get_games_by_release_date,
+    "get_schema_info":               get_schema_info,
+    "run_sql_query":                 run_sql_query,
 }
 
 
