@@ -28,7 +28,7 @@ from game_market_chatbot.tools.queries import (
     get_review_score_distribution,
     get_top_games_by_copies_sold,
 )
-from game_market_chatbot.tools.registry import TOOLS, dispatch
+from game_market_chatbot.tools.registry import RENDER_CHART_TOOL, TOOLS, dispatch
 
 
 # ---------------------------------------------------------------------------
@@ -486,6 +486,8 @@ class TestToolsRegistry:
             "get_games_by_release_date",
             "get_schema_info",
             "run_sql_query",
+            # UI-handled tool (Task 6): no backing function by design.
+            RENDER_CHART_TOOL,
         }
         assert names == expected
 
@@ -507,6 +509,9 @@ class TestToolsRegistry:
         from game_market_chatbot.tools import queries
         for tool in TOOLS:
             name = tool["function"]["name"]
+            # render_chart is executed by the UI layer, not queries.py.
+            if name == RENDER_CHART_TOOL:
+                continue
             assert hasattr(queries, name), \
                 f"Tool '{name}' has no matching function in queries.py"
 
