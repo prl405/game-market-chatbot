@@ -21,9 +21,9 @@ across turns. Only {"role", "content"} pairs are forwarded to the agent.
 
 Chart rendering
 ---------------
-build_chart_figure() maps a chart spec to a Plotly figure using Plotly
-Express. Task 8 extracts/extends this into ui/charts.py — it lives here
-for now so Task 7 is self-contained.
+Figure construction lives in ui/charts.py (render_chart). app.py calls it
+and passes the resulting figure to st.plotly_chart; failures degrade to a
+warning while the text answer is still displayed.
 """
 
 from __future__ import annotations
@@ -34,50 +34,18 @@ from typing import Any
 import streamlit as st
 
 from game_market_chatbot.agent.chat import AgentResponse, chat
+from game_market_chatbot.ui.charts import render_chart
 
 
 # ---------------------------------------------------------------------------
-# Chart rendering (Task 8 will move/expand this into ui/charts.py)
+# Chart rendering — figure construction lives in ui/charts.py (Task 8);
+# this wrapper adds Streamlit display with graceful failure.
 # ---------------------------------------------------------------------------
-
-def build_chart_figure(spec: dict[str, Any]):
-    """
-    Build a Plotly figure from an agent-produced chart spec.
-
-    Args:
-        spec: Dict with keys chart_type ("bar" | "line" | "scatter" | "pie"),
-              data (list of flat dicts), x_field, y_field and title.
-
-    Returns:
-        A plotly.graph_objects.Figure.
-
-    Raises:
-        ValueError: If the chart type is not supported.
-    """
-    import plotly.express as px
-
-    chart_type = spec.get("chart_type")
-    data = spec.get("data", [])
-    x_field = spec.get("x_field")
-    y_field = spec.get("y_field")
-    title = spec.get("title", "")
-
-    if chart_type == "bar":
-        return px.bar(data, x=x_field, y=y_field, title=title)
-    if chart_type == "line":
-        return px.line(data, x=x_field, y=y_field, title=title)
-    if chart_type == "scatter":
-        return px.scatter(data, x=x_field, y=y_field, title=title)
-    if chart_type == "pie":
-        return px.pie(data, names=x_field, values=y_field, title=title)
-
-    raise ValueError(f"Unsupported chart type: {chart_type!r}")
-
 
 def _render_chart(spec: dict[str, Any]) -> None:
     """Render a chart spec inline, degrading gracefully on failure."""
     try:
-        fig = build_chart_figure(spec)
+        fig = render_chart(spec)
         st.plotly_chart(fig, use_container_width=True)
     except Exception as exc:
         st.warning(f"Chart could not be rendered: {exc}")
