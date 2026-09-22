@@ -240,6 +240,63 @@ def test_tool_round_limit_returns_fallback_text():
 
 
 # ---------------------------------------------------------------------------
+# Tests — observability logging
+# ---------------------------------------------------------------------------
+
+def test_chat_logs_llm_requests_responses_and_tool_calls(caplog):
+    """
+    Each round logs an llm_request/llm_response pair, tool dispatches log a
+    tool_call record, and every record for the turn shares one turn_id.
+    """
+    genre_rows = [{"genre": "Indie", "game_count": 80_000}]
+    client = MockClient(script=[
+        _completion(tool_calls=[_tool_call("call_1", "get_genre_market_share", {})]),
+        _completion(content="Indie leads by game count."),
+    ])
+
+    with caplog.at_level("INFO", logger="game_market_chatbot.agent.chat"):
+        with patch(
+            "game_market_chatbot.agent.chat.dispatch", return_value=genre_rows
+        ):
+            chat(
+                [{"role": "user", "content": "What are the top genres?"}],
+                client=client,
+            )
+
+    messages = [r.message for r in caplog.records]
+    assert messages.count("llm_request") == 2
+    assert messages.count("llm_response") == 2
+    assert messages.count("tool_call") == 1
+
+    turn_ids = {r.turn_id for r in caplog.records}
+    assert len(turn_ids) == 1
+
+    tool_record = next(r for r in caplog.records if r.message == "tool_call")
+    assert tool_record.tool == "get_genre_market_share"
+    assert tool_record.status == "ok"
+
+
+def test_chat_logs_tool_error_status(caplog):
+    """A tool that raises is logged with status='error'."""
+    client = MockClient(script=[
+        _completion(tool_calls=[
+            _tool_call("call_1", "run_sql_query", {"sql": "DROP TABLE steam_games"})
+        ]),
+        _completion(content="That query isn't allowed."),
+    ])
+
+    with caplog.at_level("INFO", logger="game_market_chatbot.agent.chat"):
+        with patch(
+            "game_market_chatbot.agent.chat.dispatch",
+            side_effect=ValueError("Only read-only SELECT statements are permitted."),
+        ):
+            chat([{"role": "user", "content": "Delete everything"}], client=client)
+
+    tool_record = next(r for r in caplog.records if r.message == "tool_call")
+    assert tool_record.status == "error"
+
+
+# ---------------------------------------------------------------------------
 # Tests — render_chart tool registration
 # ---------------------------------------------------------------------------
 

@@ -34,7 +34,10 @@ from typing import Any
 import streamlit as st
 
 from game_market_chatbot.agent.chat import AgentResponse, chat
+from game_market_chatbot.observability import configure_logging
 from game_market_chatbot.ui.charts import render_chart
+
+configure_logging()
 
 
 # ---------------------------------------------------------------------------

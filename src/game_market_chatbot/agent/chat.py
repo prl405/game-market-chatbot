@@ -39,9 +39,12 @@ Testing:
 from __future__ import annotations
 
 import json
+import logging
 import os
+import time
 from dataclasses import dataclass
 from typing import Any
+from uuid import uuid4
 
 from dotenv import load_dotenv
 
@@ -49,6 +52,8 @@ from game_market_chatbot.tools.queries import get_schema_info
 from game_market_chatbot.tools.registry import RENDER_CHART_TOOL, TOOLS, dispatch
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_MODEL = "openrouter/free"
@@ -223,7 +228,7 @@ def _assistant_message_to_dict(message, tool_calls) -> dict[str, Any]:
     }
 
 
-def _execute_tool_call(tool_call) -> tuple[str, dict[str, Any] | None]:
+def _execute_tool_call(tool_call, *, turn_id: str) -> tuple[str, dict[str, Any] | None]:
     """
     Execute a single tool call.
 
@@ -240,11 +245,27 @@ def _execute_tool_call(tool_call) -> tuple[str, dict[str, Any] | None]:
     try:
         args = _parse_arguments(tool_call.function.arguments)
     except json.JSONDecodeError as exc:
+        logger.info(
+            "tool_call",
+            extra={"turn_id": turn_id, "tool": name, "status": "error", "duration_ms": 0},
+        )
         return json.dumps({"error": f"Invalid tool arguments: {exc}"}), None
+
+    start = time.perf_counter()
 
     if name == RENDER_CHART_TOOL:
         # Not executed here — captured for the UI layer to render.
         spec = _normalise_chart_spec(args)
+        logger.info(
+            "tool_call",
+            extra={
+                "turn_id": turn_id,
+                "tool": name,
+                "tool_args": args,
+                "status": "ok",
+                "duration_ms": round((time.perf_counter() - start) * 1000, 1),
+            },
+        )
         return (
             json.dumps({
                 "status": "ok",
@@ -255,8 +276,28 @@ def _execute_tool_call(tool_call) -> tuple[str, dict[str, Any] | None]:
 
     try:
         result = dispatch(name, args)
+        logger.info(
+            "tool_call",
+            extra={
+                "turn_id": turn_id,
+                "tool": name,
+                "tool_args": args,
+                "status": "ok",
+                "duration_ms": round((time.perf_counter() - start) * 1000, 1),
+            },
+        )
         return json.dumps(result, default=str), None
     except Exception as exc:
+        logger.info(
+            "tool_call",
+            extra={
+                "turn_id": turn_id,
+                "tool": name,
+                "tool_args": args,
+                "status": "error",
+                "duration_ms": round((time.perf_counter() - start) * 1000, 1),
+            },
+        )
         return json.dumps({"error": f"{type(exc).__name__}: {exc}"}), None
 
 
@@ -291,6 +332,8 @@ def chat(
         client = get_client()
     model = model or get_model()
 
+    turn_id = uuid4().hex[:12]
+
     conversation: list[dict[str, Any]] = [
         {"role": "system", "content": build_system_prompt()},
         *messages,
@@ -299,14 +342,48 @@ def chat(
     chart_spec: dict[str, Any] | None = None
     last_text = ""
 
-    for _ in range(MAX_TOOL_ROUNDS):
-        response = client.chat.completions.create(
-            model=model,
-            messages=conversation,
-            tools=TOOLS,
+    for round_num in range(MAX_TOOL_ROUNDS):
+        logger.info(
+            "llm_request",
+            extra={
+                "turn_id": turn_id,
+                "round": round_num,
+                "model": model,
+                "message_count": len(conversation),
+            },
         )
+        start = time.perf_counter()
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=conversation,
+                tools=TOOLS,
+            )
+        except Exception:
+            logger.exception(
+                "llm_request_failed",
+                extra={"turn_id": turn_id, "round": round_num},
+            )
+            raise
+
         message = response.choices[0].message
         tool_calls = getattr(message, "tool_calls", None) or []
+        usage = getattr(response, "usage", None)
+        logger.info(
+            "llm_response",
+            extra={
+                "turn_id": turn_id,
+                "round": round_num,
+                "latency_ms": round((time.perf_counter() - start) * 1000, 1),
+                "tool_call_count": len(tool_calls),
+                "tool_call_names": [tc.function.name for tc in tool_calls],
+                "usage": {
+                    "prompt_tokens": getattr(usage, "prompt_tokens", None),
+                    "completion_tokens": getattr(usage, "completion_tokens", None),
+                    "total_tokens": getattr(usage, "total_tokens", None),
+                } if usage is not None else None,
+            },
+        )
 
         # No tool calls → this is the final answer.
         if not tool_calls:
@@ -321,7 +398,7 @@ def chat(
         conversation.append(_assistant_message_to_dict(message, tool_calls))
 
         for tool_call in tool_calls:
-            result_content, spec = _execute_tool_call(tool_call)
+            result_content, spec = _execute_tool_call(tool_call, turn_id=turn_id)
             if spec is not None:
                 chart_spec = spec
             conversation.append({
@@ -331,6 +408,7 @@ def chat(
             })
 
     # Round limit hit — return whatever text we have rather than looping forever.
+    logger.warning("tool_round_limit_reached", extra={"turn_id": turn_id})
     return AgentResponse(
         text=last_text or (
             "I wasn't able to finish researching that question — "

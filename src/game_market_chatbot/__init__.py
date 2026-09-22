@@ -20,6 +20,9 @@ import sys
 
 
 def main() -> None:
+    from game_market_chatbot.observability import configure_logging
+    configure_logging()
+
     args = sys.argv[1:]
 
     if not args:
