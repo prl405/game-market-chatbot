@@ -310,19 +310,22 @@ def chat(
     *,
     client=None,
     model: str | None = None,
+    temperature: float | None = None,
 ) -> AgentResponse:
     """
     Run one chat turn: send the conversation to the LLM, execute any tool
     calls it requests, and return its final answer.
 
     Args:
-        messages: Conversation history as a list of {"role", "content"}
-                  dicts (user/assistant roles only — the system prompt is
-                  prepended internally).
-        client:   Optional OpenAI-compatible client. When omitted, one is
-                  built from OPENROUTER_API_KEY. Pass a mock in tests.
-        model:    Optional OpenRouter model slug. Defaults to the
-                  OPENROUTER_MODEL env var, then DEFAULT_MODEL.
+        messages:    Conversation history as a list of {"role", "content"}
+                     dicts (user/assistant roles only — the system prompt is
+                     prepended internally).
+        client:      Optional OpenAI-compatible client. When omitted, one is
+                     built from OPENROUTER_API_KEY. Pass a mock in tests.
+        model:       Optional OpenRouter model slug. Defaults to the
+                     OPENROUTER_MODEL env var, then DEFAULT_MODEL.
+        temperature: Optional sampling temperature forwarded to the API.
+                     Left unset by default; pass 0 for deterministic evals.
 
     Returns:
         AgentResponse with the assistant's text and an optional chart spec
@@ -353,12 +356,15 @@ def chat(
             },
         )
         start = time.perf_counter()
+        create_kwargs: dict[str, Any] = {
+            "model": model,
+            "messages": conversation,
+            "tools": TOOLS,
+        }
+        if temperature is not None:
+            create_kwargs["temperature"] = temperature
         try:
-            response = client.chat.completions.create(
-                model=model,
-                messages=conversation,
-                tools=TOOLS,
-            )
+            response = client.chat.completions.create(**create_kwargs)
         except Exception:
             logger.exception(
                 "llm_request_failed",
