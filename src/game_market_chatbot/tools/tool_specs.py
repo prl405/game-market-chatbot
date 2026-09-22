@@ -1,7 +1,7 @@
 """
-OpenAI-format tool definitions for the predefined query tools.
+OpenAI-format tool schema definitions for the predefined query tools.
 
-Each entry in TOOLS follows the OpenAI function-calling schema:
+Each entry follows the OpenAI function-calling schema:
   {
     "type": "function",
     "function": {
@@ -11,42 +11,15 @@ Each entry in TOOLS follows the OpenAI function-calling schema:
     }
   }
 
-The agent layer passes TOOLS directly to the `tools` parameter of the
-OpenAI chat completions API. The `name` in each definition must exactly
-match the function name in queries.py so the agent dispatcher can resolve
-tool calls by name.
-
-Usage:
-    from game_market_chatbot.tools.registry import TOOLS, dispatch
-
-    # Pass to OpenRouter / OpenAI:
-    response = client.chat.completions.create(
-        model=..., messages=..., tools=TOOLS
-    )
-
-    # Execute a tool call returned by the model:
-    result = dispatch(tool_call.function.name, tool_call.function.arguments)
+The `name` in each definition must exactly match a function name in
+query_sales.py / query_market.py / query_releases.py / sql_fallback.py so
+dispatch.py can resolve tool calls by name. render_chart is defined
+separately in chart_spec.py and appended by dispatch.py.
 """
 
 from __future__ import annotations
 
-import json
 from typing import Any
-
-from game_market_chatbot.tools.queries import (
-    get_games_by_price_range,
-    get_games_by_release_date,
-    get_genre_market_share,
-    get_publisher_class_breakdown,
-    get_review_score_distribution,
-    get_top_games_by_copies_sold,
-    get_schema_info,
-    run_sql_query,
-)
-
-# ---------------------------------------------------------------------------
-# Tool definitions (OpenAI function-calling schema)
-# ---------------------------------------------------------------------------
 
 TOOLS: list[dict[str, Any]] = [
     {
@@ -287,117 +260,3 @@ TOOLS: list[dict[str, Any]] = [
         },
     },
 ]
-
-# ---------------------------------------------------------------------------
-# render_chart — UI-handled tool
-#
-# render_chart is defined here so it travels with the rest of TOOLS, but it
-# is deliberately absent from _FUNCTION_MAP: the agent layer captures its
-# arguments as a chart spec and the UI layer (app.py / ui/charts.py) renders
-# it. Calling dispatch("render_chart", ...) raises ValueError by design.
-# ---------------------------------------------------------------------------
-
-RENDER_CHART_TOOL = "render_chart"
-
-_RENDER_CHART_DEFINITION: dict[str, Any] = {
-    "type": "function",
-    "function": {
-        "name": RENDER_CHART_TOOL,
-        "description": (
-            "Render a chart in the UI alongside your text answer. "
-            "Call this AFTER fetching data with another tool — pass the rows "
-            "you want to plot (keep it under ~50 rows; aggregate or trim "
-            "larger results first). The chart appears next to your reply, so "
-            "you do not need to restate every value in prose. "
-            "Use bar for rankings/comparisons, line for trends over time, "
-            "scatter for relationships between two numeric fields, and pie "
-            "for share-of-total breakdowns."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "chart_type": {
-                    "type": "string",
-                    "enum": ["bar", "line", "scatter", "pie"],
-                    "description": "The type of chart to render.",
-                },
-                "data": {
-                    "type": "array",
-                    "items": {"type": "object"},
-                    "description": (
-                        "Rows to plot as a list of flat objects, e.g. "
-                        "[{\"genre\": \"Action\", \"total_copies_sold\": 123}, …]. "
-                        "Typically copied (or aggregated) from a query tool result."
-                    ),
-                },
-                "x_field": {
-                    "type": "string",
-                    "description": (
-                        "Key in each data row for the x-axis. "
-                        "For pie charts this is the slice label field."
-                    ),
-                },
-                "y_field": {
-                    "type": "string",
-                    "description": (
-                        "Key in each data row for the y-axis. "
-                        "For pie charts this is the slice value field."
-                    ),
-                },
-                "title": {
-                    "type": "string",
-                    "description": "Short descriptive chart title.",
-                },
-            },
-            "required": ["chart_type", "data", "x_field", "y_field", "title"],
-        },
-    },
-}
-
-TOOLS.append(_RENDER_CHART_DEFINITION)
-
-
-# ---------------------------------------------------------------------------
-# Dispatcher — maps function name → callable
-# ---------------------------------------------------------------------------
-
-_FUNCTION_MAP = {
-    "get_top_games_by_copies_sold":  get_top_games_by_copies_sold,
-    "get_genre_market_share":        get_genre_market_share,
-    "get_publisher_class_breakdown": get_publisher_class_breakdown,
-    "get_games_by_price_range":      get_games_by_price_range,
-    "get_review_score_distribution": get_review_score_distribution,
-    "get_games_by_release_date":     get_games_by_release_date,
-    "get_schema_info":               get_schema_info,
-    "run_sql_query":                 run_sql_query,
-}
-
-
-def dispatch(name: str, arguments: str | dict) -> list[dict[str, Any]]:
-    """
-    Execute a tool call by name with the provided arguments.
-
-    Args:
-        name:      The function name from the tool call (must match a key
-                   in _FUNCTION_MAP).
-        arguments: Either a JSON string or a dict of keyword arguments,
-                   as returned by the OpenAI API tool_call.function.arguments.
-
-    Returns:
-        The result of the query function — a list of dicts.
-
-    Raises:
-        ValueError: If the function name is not registered.
-    """
-    if name not in _FUNCTION_MAP:
-        registered = ", ".join(_FUNCTION_MAP.keys())
-        raise ValueError(
-            f"Unknown tool: {name!r}. Registered tools: {registered}"
-        )
-
-    if isinstance(arguments, str):
-        kwargs = json.loads(arguments) if arguments.strip() else {}
-    else:
-        kwargs = arguments
-
-    return _FUNCTION_MAP[name](**kwargs)

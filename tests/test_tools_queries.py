@@ -1,5 +1,5 @@
 """
-Unit tests for src/game_market_chatbot/tools/queries.py and registry.py.
+Unit tests for the src/game_market_chatbot/tools/ query modules and dispatch.py.
 
 All tests use an in-memory turso database seeded with a small, controlled
 fixture dataset. No real database file or network connection is required.
@@ -20,15 +20,17 @@ from datetime import datetime, timezone
 import pytest
 import turso
 
-from game_market_chatbot.tools.queries import (
-    get_games_by_price_range,
-    get_games_by_release_date,
+from game_market_chatbot.tools.query_market import (
     get_genre_market_share,
     get_publisher_class_breakdown,
     get_review_score_distribution,
+)
+from game_market_chatbot.tools.query_releases import get_games_by_release_date
+from game_market_chatbot.tools.query_sales import (
+    get_games_by_price_range,
     get_top_games_by_copies_sold,
 )
-from game_market_chatbot.tools.registry import RENDER_CHART_TOOL, TOOLS, dispatch
+from game_market_chatbot.tools.dispatch import RENDER_CHART_TOOL, TOOLS, dispatch
 
 
 # ---------------------------------------------------------------------------
@@ -506,18 +508,19 @@ class TestToolsRegistry:
             assert len(tool["function"]["description"].strip()) > 0
 
     def test_tool_names_match_actual_functions(self):
-        from game_market_chatbot.tools import queries
+        from game_market_chatbot.tools.dispatch import _FUNCTION_MAP
         for tool in TOOLS:
             name = tool["function"]["name"]
-            # render_chart is executed by the UI layer, not queries.py.
+            # render_chart is executed by the UI layer, not dispatched here.
             if name == RENDER_CHART_TOOL:
                 continue
-            assert hasattr(queries, name), \
-                f"Tool '{name}' has no matching function in queries.py"
+            assert name in _FUNCTION_MAP, \
+                f"Tool '{name}' has no matching function in _FUNCTION_MAP"
 
 
 # ---------------------------------------------------------------------------
-# registry — dispatch()
+# ---------------------------------------------------------------------------
+# dispatch — dispatch()
 # ---------------------------------------------------------------------------
 
 class TestDispatch:
@@ -526,7 +529,7 @@ class TestDispatch:
         # dispatch() injects conn via kwargs — but the real dispatch uses the
         # live DB. We test it directly by calling the underlying functions.
         # This test verifies dispatch resolves names correctly.
-        from game_market_chatbot.tools.registry import dispatch as reg_dispatch
+        from game_market_chatbot.tools.dispatch import dispatch as reg_dispatch
         # Patch connection for this call by relying on the live local DB file.
         # We just verify it doesn't raise for valid names.
         # (Full integration is covered by the query function tests above.)
@@ -542,7 +545,7 @@ class TestDispatch:
         if not os.path.exists("data/games.db"):
             pytest.skip("Live database not available for dispatch integration test")
         result = reg_dispatch_fn = __import__(
-            "game_market_chatbot.tools.registry", fromlist=["dispatch"]
+            "game_market_chatbot.tools.dispatch", fromlist=["dispatch"]
         ).dispatch
         result = reg_dispatch_fn(
             "get_top_games_by_copies_sold",
@@ -555,12 +558,12 @@ class TestDispatch:
         import os
         if not os.path.exists("data/games.db"):
             pytest.skip("Live database not available for dispatch integration test")
-        from game_market_chatbot.tools.registry import dispatch as reg_dispatch
+        from game_market_chatbot.tools.dispatch import dispatch as reg_dispatch
         result = reg_dispatch("get_genre_market_share", "")
         assert isinstance(result, list)
 
     def test_dispatch_unknown_tool_raises_value_error(self):
-        from game_market_chatbot.tools.registry import dispatch as reg_dispatch
+        from game_market_chatbot.tools.dispatch import dispatch as reg_dispatch
         with pytest.raises(ValueError, match="Unknown tool"):
             reg_dispatch("nonexistent_tool", {})
 
@@ -697,5 +700,5 @@ class TestGetGamesByReleaseDate:
         assert "get_games_by_release_date" in names
 
     def test_registered_in_function_map(self):
-        from game_market_chatbot.tools.registry import _FUNCTION_MAP
+        from game_market_chatbot.tools.dispatch import _FUNCTION_MAP
         assert "get_games_by_release_date" in _FUNCTION_MAP

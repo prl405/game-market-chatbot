@@ -9,7 +9,7 @@ Tool loop
 1. Send the conversation (plus the system prompt) to the model with TOOLS.
 2. If the model requests tool calls, handle each one:
      - Predefined query tools and `run_sql_query` are executed via
-       tools.registry.dispatch().
+       tools.dispatch.dispatch().
      - `render_chart` is NOT executed here — its arguments are captured as
        a chart spec and returned on the AgentResponse for the UI layer to
        render (see app.py). The model is told the chart was queued.
@@ -48,8 +48,8 @@ from uuid import uuid4
 
 from dotenv import load_dotenv
 
-from game_market_chatbot.tools.queries import get_schema_info
-from game_market_chatbot.tools.registry import RENDER_CHART_TOOL, TOOLS, dispatch
+from game_market_chatbot.tools.dispatch import RENDER_CHART_TOOL, TOOLS, dispatch
+from game_market_chatbot.tools.sql_fallback import get_schema_info
 
 load_dotenv()
 

@@ -17,7 +17,7 @@ from unittest.mock import patch
 import pytest
 
 from game_market_chatbot.agent.chat import AgentResponse, chat
-from game_market_chatbot.tools.registry import RENDER_CHART_TOOL, TOOLS, dispatch
+from game_market_chatbot.tools.dispatch import RENDER_CHART_TOOL, TOOLS, dispatch
 
 
 # ---------------------------------------------------------------------------

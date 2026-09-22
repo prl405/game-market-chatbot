@@ -3,8 +3,8 @@ Ground-truth computations for the answer-quality eval suite.
 
 Every function here queries the real `steam_games` table directly with raw
 SQL / Python, deliberately WITHOUT importing anything from
-`game_market_chatbot.tools.queries` — the point is to have an oracle that is
-independent of the app's own (possibly buggy) query implementations.
+`game_market_chatbot.tools` query modules — the point is to have an oracle
+that is independent of the app's own (possibly buggy) query implementations.
 
 All functions accept a DB-API 2.0 connection (e.g. from
 `game_market_chatbot.db.client.get_connection()`).
