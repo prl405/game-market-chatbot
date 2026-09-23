@@ -33,7 +33,11 @@ describe('AssistantMessage mixed content', () => {
     ])} />);
 
     expect(screen.getByRole('table')).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: 'Genre' })).toBeTruthy();
+    const header = screen.getByRole('columnheader', { name: 'Genre' });
+    expect(header.className).toContain('border-black');
+    expect(header.className).toContain('bg-[#2B66FF]');
+    expect(header.className).toContain('text-white');
+    expect(container.querySelector('td')?.className).toContain('border-black');
     expect(screen.getAllByText('RPG').length).toBeGreaterThan(0);
     expect(screen.getByText('Copies by genre')).toBeTruthy();
     expect(screen.getByRole('group', { name: 'copies by genre' })).toBeTruthy();

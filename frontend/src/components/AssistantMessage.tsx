@@ -72,12 +72,12 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({ message }) =
                 remarkPlugins={[remarkGfm]}
                 components={{
                   table: ({ children }) => (
-                    <div className="max-w-full overflow-x-auto border border-slate-300">
+                    <div className="max-w-full overflow-x-auto border border-black">
                       <table className="min-w-full border-collapse text-left text-sm">{children}</table>
                     </div>
                   ),
-                  th: ({ children }) => <th className="whitespace-nowrap border border-slate-300 bg-slate-100 px-2 py-1.5 font-bold">{children}</th>,
-                  td: ({ children }) => <td className="border border-slate-300 px-2 py-1.5 align-top">{children}</td>,
+                  th: ({ children }) => <th className="whitespace-nowrap border border-black bg-[#2B66FF] px-2 py-1.5 font-bold text-white">{children}</th>,
+                  td: ({ children }) => <td className="border border-black px-2 py-1.5 align-top">{children}</td>,
                   a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer">{children}</a>,
                 }}
               >
