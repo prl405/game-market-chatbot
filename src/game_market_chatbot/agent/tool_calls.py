@@ -21,8 +21,73 @@ def parse_arguments(arguments: str | dict | None) -> dict[str, Any]:
     return json.loads(arguments)
 
 
-def normalise_chart_spec(args: dict[str, Any]) -> dict[str, Any]:
+def normalise_chart_spec(
+    args: dict[str, Any],
+    query_results: dict[str, list[dict[str, Any]]] | None = None,
+) -> dict[str, Any]:
     """Build a chart spec and reject malformed data before it reaches the UI."""
+    chart_type = args.get("chart_type", "bar")
+    if chart_type == "histogram":
+        source_call_id = args.get("source_call_id")
+        value_field = args.get("value_field")
+        if not isinstance(source_call_id, str) or not source_call_id:
+            raise ValueError("Histogram charts require a source_call_id.")
+        if not isinstance(value_field, str) or not value_field:
+            raise ValueError("Histogram charts require a value_field.")
+        source_rows = (query_results or {}).get(source_call_id)
+        if source_rows is None:
+            raise ValueError("Histogram source must reference an earlier query result in this turn.")
+        values = [
+            row[value_field]
+            for row in source_rows
+            if isinstance(row, dict)
+            and value_field in row
+            and not isinstance(row[value_field], bool)
+            and isinstance(row[value_field], (int, float))
+            and math.isfinite(row[value_field])
+        ]
+        if not values:
+            raise ValueError("Histogram source has no finite numeric values for that field.")
+
+        minimum = min(values)
+        maximum = max(values)
+        bin_count = min(20, math.ceil(math.sqrt(len(values))))
+        if minimum == maximum:
+            padding = max(abs(minimum) * 1e-9, 1.0)
+            lower = minimum - padding
+            upper = maximum + padding
+            if not math.isfinite(lower):
+                lower = minimum
+            if not math.isfinite(upper):
+                upper = maximum
+            if lower == upper:
+                lower, upper = minimum - 1.0, maximum + 1.0
+            bin_count = 1
+        else:
+            lower, upper = minimum, maximum
+
+        width = (upper - lower) / bin_count
+        counts = [0] * bin_count
+        for value in values:
+            index = min(int((value - lower) / width), bin_count - 1)
+            counts[index] += 1
+        data = [
+            {
+                "bin_start": lower + index * width,
+                "bin_end": upper if index == bin_count - 1 else lower + (index + 1) * width,
+                "count": counts[index],
+            }
+            for index in range(bin_count)
+        ]
+        return {
+            "chart_type": chart_type,
+            "data": data,
+            "x_field": "bin_start",
+            "x_end_field": "bin_end",
+            "y_field": "count",
+            "title": str(args.get("title", "")),
+        }
+
     data = args.get("data", [])
     if isinstance(data, str):
         try:
@@ -30,7 +95,6 @@ def normalise_chart_spec(args: dict[str, Any]) -> dict[str, Any]:
         except json.JSONDecodeError:
             data = []
 
-    chart_type = args.get("chart_type", "bar")
     x_field = args.get("x_field")
     y_field = args.get("y_field")
     if not isinstance(chart_type, str) or chart_type not in {"bar", "line", "scatter", "pie"}:
@@ -91,6 +155,7 @@ def execute_tool_call(
     turn_id: str,
     dispatch_fn: Callable,
     logger: logging.Logger,
+    query_results: dict[str, list[dict[str, Any]]] | None = None,
 ) -> tuple[str, dict[str, Any] | None]:
     """Execute a tool or capture a chart request, returning model content."""
     name = tool_call.function.name
@@ -108,7 +173,7 @@ def execute_tool_call(
 
     if name == RENDER_CHART_TOOL:
         try:
-            spec = normalise_chart_spec(args)
+            spec = normalise_chart_spec(args, query_results)
         except ValueError as exc:
             logger.info(
                 "tool_call",
@@ -148,6 +213,13 @@ def execute_tool_call(
 
     try:
         result = dispatch_fn(name, args)
+        if (
+            query_results is not None
+            and isinstance(result, list)
+            and len(result) <= 1000
+            and all(isinstance(row, dict) for row in result)
+        ):
+            query_results[tool_call.id] = result
         logger.info(
             "tool_call",
             extra={

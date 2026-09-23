@@ -13,10 +13,30 @@ export interface ChatResponse {
 function isChartSpec(value: unknown): value is ChartSpec {
   if (!value || typeof value !== 'object') return false;
   const spec = value as Partial<ChartSpec>;
-  if (!['bar', 'line', 'scatter', 'pie'].includes(String(spec.chart_type))) return false;
+  if (!['bar', 'line', 'scatter', 'pie', 'histogram'].includes(String(spec.chart_type))) return false;
   if (!Array.isArray(spec.data) || spec.data.length === 0 || spec.data.length > 50) return false;
   if (typeof spec.x_field !== 'string' || typeof spec.y_field !== 'string') return false;
   if (!spec.x_field || !spec.y_field || typeof spec.title !== 'string') return false;
+
+  if (spec.chart_type === 'histogram') {
+    if (typeof spec.x_end_field !== 'string' || !spec.x_end_field || spec.data.length > 20) return false;
+    let previousEnd = -Infinity;
+    return spec.data.every((row) => {
+      if (!row || typeof row !== 'object') return false;
+      const values = row as Record<string, unknown>;
+      const lower = values[spec.x_field!];
+      const upper = values[spec.x_end_field!];
+      const count = values[spec.y_field!];
+      if (
+        typeof lower !== 'number' || !Number.isFinite(lower) ||
+        typeof upper !== 'number' || !Number.isFinite(upper) ||
+        typeof count !== 'number' || !Number.isFinite(count) ||
+        lower >= upper || count < 0 || lower < previousEnd
+      ) return false;
+      previousEnd = upper;
+      return true;
+    });
+  }
 
   return spec.data.every((row) => {
     if (!row || typeof row !== 'object') return false;

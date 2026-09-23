@@ -20,7 +20,9 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({ message }) =
     const text = blocks.map((block) => block.type === 'markdown'
       ? block.content
       : `[Chart: ${block.chart.title}]\n${block.chart.data
-        .map((row) => `${String(row[block.chart.x_field])}: ${String(row[block.chart.y_field])}`)
+        .map((row) => block.chart.chart_type === 'histogram' && block.chart.x_end_field
+          ? `${String(row[block.chart.x_field])} to ${String(row[block.chart.x_end_field])}: ${String(row[block.chart.y_field])}`
+          : `${String(row[block.chart.x_field])}: ${String(row[block.chart.y_field])}`)
         .join('\n')}`).join('\n\n');
     navigator.clipboard.writeText(text);
     setCopied(true);

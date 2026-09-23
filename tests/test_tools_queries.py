@@ -32,6 +32,7 @@ from game_market_chatbot.tools.query_sales import (
 )
 from game_market_chatbot.tools.chart_spec import COMPOSE_RESPONSE_TOOL
 from game_market_chatbot.tools.dispatch import RENDER_CHART_TOOL, TOOLS, dispatch
+from game_market_chatbot.tools.sql_fallback import run_sql_query
 
 
 # ---------------------------------------------------------------------------
@@ -519,6 +520,25 @@ class TestToolsRegistry:
                 continue
             assert name in _FUNCTION_MAP, \
                 f"Tool '{name}' has no matching function in _FUNCTION_MAP"
+
+
+def test_sql_query_rejects_explicit_limits_over_1000_rows():
+    class Cursor:
+        description = [("value",)]
+
+        def execute(self, _sql):
+            pass
+
+        def fetchmany(self, size):
+            assert size == 1001
+            return [(value,) for value in range(size)]
+
+    class Connection:
+        def cursor(self):
+            return Cursor()
+
+    with pytest.raises(ValueError, match="cannot exceed 1000 rows"):
+        run_sql_query("SELECT value LIMIT 5000", conn=Connection())
 
 
 # ---------------------------------------------------------------------------

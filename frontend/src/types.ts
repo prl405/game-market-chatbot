@@ -3,9 +3,10 @@ export type Role = 'user' | 'assistant';
 // Mirrors the backend's chart_spec shape exactly — see
 // src/game_market_chatbot/tools/chart_spec.py and agent/tool_calls.py.
 export interface ChartSpec {
-  chart_type: 'bar' | 'line' | 'scatter' | 'pie';
+  chart_type: 'bar' | 'line' | 'scatter' | 'pie' | 'histogram';
   data: Record<string, unknown>[];
   x_field: string;
+  x_end_field?: string;
   y_field: string;
   title: string;
 }

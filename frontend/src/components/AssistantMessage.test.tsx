@@ -58,4 +58,48 @@ describe('AssistantMessage mixed content', () => {
       { type: 'markdown', content: 'Chart unavailable: the chart data was invalid.' },
     ]);
   });
+
+  it('renders histogram intervals with range labels and frequencies', () => {
+    render(<AssistantMessage message={message([
+      {
+        type: 'chart',
+        chart: {
+          chart_type: 'histogram',
+          data: [
+            { bin_start: 0, bin_end: 5, count: 3 },
+            { bin_start: 5, bin_end: 10, count: 7 },
+          ],
+          x_field: 'bin_start',
+          x_end_field: 'bin_end',
+          y_field: 'count',
+          title: 'Score distribution',
+        },
+      },
+    ])} />);
+
+    expect(screen.getByRole('group', { name: 'count by bin_start range' })).toBeTruthy();
+    expect(screen.getByRole('img', { name: '0 to 5: 3 count' })).toBeTruthy();
+    expect(screen.getByRole('img', { name: '5 to 10: 7 count' })).toBeTruthy();
+  });
+
+  it('rejects overlapping histogram intervals with the readable fallback', () => {
+    expect(parseResponseBlocks([
+      {
+        type: 'chart',
+        chart: {
+          chart_type: 'histogram',
+          data: [
+            { start: 0, end: 6, count: 3 },
+            { start: 5, end: 10, count: 7 },
+          ],
+          x_field: 'start',
+          x_end_field: 'end',
+          y_field: 'count',
+          title: 'Invalid histogram',
+        },
+      },
+    ], '', null)).toEqual([
+      { type: 'markdown', content: 'Chart unavailable: the chart data was invalid.' },
+    ]);
+  });
 });

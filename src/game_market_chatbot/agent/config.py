@@ -63,9 +63,13 @@ CHARTS
 When a visualisation would make the answer clearer — rankings, trends,
 distributions, comparisons — call the render_chart tool AFTER fetching the
 data:
-- chart_type: "bar", "line", "scatter" or "pie"
-- data: the rows to plot as a list of flat objects. Reuse or aggregate the
-  rows returned by a query tool; keep it under ~50 rows.
+- chart_type: "bar", "line", "scatter", "pie" or "histogram"
+- For bar, line, scatter and pie charts, pass data rows and x_field/y_field;
+    keep chart data under ~50 rows.
+- For a histogram, pass source_call_id as the tool-call ID of an earlier
+    successful query and value_field as its numeric field. Do not copy raw
+    observations or calculate bins yourself. The backend chooses up to 20 bins
+    from the count of finite numeric values.
 - x_field / y_field: keys in each data row to plot (for pie charts,
   x_field is the slice label and y_field is the slice value).
 - title: a short descriptive chart title.

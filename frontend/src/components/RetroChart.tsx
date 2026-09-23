@@ -2,7 +2,7 @@
  * Retro-styled chart dispatcher for the backend's chart_spec.
  *
  * Maps chart_spec (chart_type, data, x_field, y_field, title) onto one of
- * four D3-backed chart bodies, all sharing the same retro header/border
+ * D3-backed chart bodies, all sharing the same retro header/border
  * frame. See src/game_market_chatbot/tools/chart_spec.py for the spec shape.
  */
 
@@ -12,6 +12,7 @@ import { RetroBarChart } from './charts/RetroBarChart';
 import { RetroLineChart } from './charts/RetroLineChart';
 import { RetroScatterChart } from './charts/RetroScatterChart';
 import { RetroPieChart } from './charts/RetroPieChart';
+import { RetroHistogramChart } from './charts/RetroHistogramChart';
 
 interface RetroChartProps {
   data: ChartSpec;
@@ -42,6 +43,17 @@ export const RetroChart: React.FC<RetroChartProps> = ({ data: spec }) => {
       )}
       {chart_type === 'pie' && (
         <RetroPieChart slices={data.map((row) => ({ label: String(row[x_field] ?? ''), value: Number(row[y_field] ?? 0) }))} />
+      )}
+      {chart_type === 'histogram' && spec.x_end_field && (
+        <RetroHistogramChart
+          bins={data.map((row) => ({
+            start: Number(row[x_field]),
+            end: Number(row[spec.x_end_field!]),
+            count: Number(row[y_field]),
+          }))}
+          xLabel={x_field}
+          yLabel={y_field}
+        />
       )}
 
       <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-300 flex-wrap gap-2">

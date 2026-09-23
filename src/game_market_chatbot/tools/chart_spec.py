@@ -20,18 +20,21 @@ _RENDER_CHART_DEFINITION: dict[str, Any] = {
             "Queue a chart that can be placed within your composed answer. "
             "Call this AFTER fetching data with another tool — pass the rows "
             "you want to plot (keep it under ~50 rows; aggregate or trim "
-            "larger results first). The chart appears next to your reply, so "
+            "larger results first). For histograms, reference the earlier "
+            "query tool-call ID and numeric field instead of copying rows. "
+            "The chart appears next to your reply, so "
             "you do not need to restate every value in prose. "
             "Use bar for rankings/comparisons, line for trends over time, "
-            "scatter for relationships between two numeric fields, and pie "
-            "for share-of-total breakdowns."
+            "scatter for relationships between two numeric fields, pie "
+            "for share-of-total breakdowns, and histogram for distributions "
+            "of a numeric field."
         ),
         "parameters": {
             "type": "object",
             "properties": {
                 "chart_type": {
                     "type": "string",
-                    "enum": ["bar", "line", "scatter", "pie"],
+                    "enum": ["bar", "line", "scatter", "pie", "histogram"],
                     "description": "The type of chart to render.",
                 },
                 "data": {
@@ -42,6 +45,14 @@ _RENDER_CHART_DEFINITION: dict[str, Any] = {
                         "[{\"genre\": \"Action\", \"total_copies_sold\": 123}, …]. "
                         "Typically copied (or aggregated) from a query tool result."
                     ),
+                },
+                "source_call_id": {
+                    "type": "string",
+                    "description": "For histograms, the ID of an earlier query tool call in this turn.",
+                },
+                "value_field": {
+                    "type": "string",
+                    "description": "For histograms, the numeric field to bin from the referenced query rows.",
                 },
                 "x_field": {
                     "type": "string",
@@ -62,7 +73,7 @@ _RENDER_CHART_DEFINITION: dict[str, Any] = {
                     "description": "Short descriptive chart title.",
                 },
             },
-            "required": ["chart_type", "data", "x_field", "y_field", "title"],
+            "required": ["chart_type", "title"],
         },
     },
 }

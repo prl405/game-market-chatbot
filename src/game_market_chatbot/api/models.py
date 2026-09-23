@@ -24,14 +24,37 @@ class ChatResponse(BaseModel):
 
 
 class ChartSpecModel(BaseModel):
-    chart_type: Literal["bar", "line", "scatter", "pie"]
+    chart_type: Literal["bar", "line", "scatter", "pie", "histogram"]
     data: list[dict[str, Any]] = Field(min_length=1, max_length=50)
     x_field: str = Field(min_length=1)
+    x_end_field: str | None = Field(default=None, exclude_if=lambda value: value is None)
     y_field: str = Field(min_length=1)
     title: str
 
     @model_validator(mode="after")
     def validate_rows(self) -> "ChartSpecModel":
+        if self.chart_type == "histogram":
+            if not self.x_end_field:
+                raise ValueError("Histogram charts require x_end_field.")
+            if len(self.data) > 20:
+                raise ValueError("Histogram charts cannot contain more than 20 bins.")
+            previous_end = None
+            for row in self.data:
+                if self.x_field not in row or self.x_end_field not in row or self.y_field not in row:
+                    raise ValueError("Histogram bins must include both boundaries and a count.")
+                lower, upper, count = row[self.x_field], row[self.x_end_field], row[self.y_field]
+                if any(
+                    isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value)
+                    for value in (lower, upper, count)
+                ):
+                    raise ValueError("Histogram boundaries and counts must be finite numbers.")
+                if lower >= upper or count < 0:
+                    raise ValueError("Histogram bins require increasing boundaries and nonnegative counts.")
+                if previous_end is not None and lower < previous_end:
+                    raise ValueError("Histogram bins must be ordered and non-overlapping.")
+                previous_end = upper
+            return self
+
         for row in self.data:
             if self.x_field not in row or self.y_field not in row:
                 raise ValueError("Chart data rows must include both plotted fields.")

@@ -129,6 +129,7 @@ def chat(
     ]
 
     chart_specs: list[dict[str, Any]] = []
+    query_results: dict[str, list[dict[str, Any]]] = {}
     composed_blocks: list[dict[str, Any]] | None = None
     composition_request: dict[str, Any] | None = None
     last_text = ""
@@ -237,6 +238,7 @@ def chat(
                 turn_id=turn_id,
                 dispatch_fn=dispatch,
                 logger=logger,
+                query_results=query_results,
             )
             if spec is not None:
                 chart_specs.append(spec)

@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from game_market_chatbot.tools.db_helpers import _get_conn, _rows_to_dicts
+from game_market_chatbot.tools.db_helpers import _get_conn
 
 # Keywords that indicate a write or destructive operation.
 # The check is case-insensitive and word-boundary aware.
@@ -48,7 +48,7 @@ def run_sql_query(
     conn=None,
 ) -> list[dict[str, Any]]:
     """
-    Execute a raw SELECT query and return up to 500 rows as a list of dicts.
+    Execute a raw SELECT query and return up to 1000 rows as a list of dicts.
 
     This is the text-to-SQL fallback tool — the LLM generates SQL for
     open-ended questions that predefined tools cannot answer.
@@ -60,7 +60,7 @@ def run_sql_query(
         conn: Optional database connection (used in tests).
 
     Returns:
-        List of dicts, one per row, keyed by column name. Capped at 500 rows.
+        List of dicts, one per row, keyed by column name. Capped at 1000 rows.
 
     Raises:
         ValueError: If the SQL is not a read-only SELECT statement.
@@ -75,8 +75,8 @@ def run_sql_query(
             f"Received: {sql[:120]!r}"
         )
 
-    # Enforce a row cap by injecting LIMIT if the query has none.
-    _MAX_ROWS = 500
+    # Enforce a row cap even when the query already has an explicit LIMIT.
+    _MAX_ROWS = 1000
     upper = sql.strip().upper()
     if "LIMIT" not in upper:
         sql = sql.rstrip().rstrip(";") + f" LIMIT {_MAX_ROWS}"
@@ -86,7 +86,11 @@ def run_sql_query(
     try:
         cursor = connection.cursor()
         cursor.execute(sql)
-        return _rows_to_dicts(cursor)
+        columns = [description[0] for description in cursor.description]
+        rows = cursor.fetchmany(_MAX_ROWS + 1)
+        if len(rows) > _MAX_ROWS:
+            raise ValueError(f"SQL query results cannot exceed {_MAX_ROWS} rows.")
+        return [dict(zip(columns, row)) for row in rows]
     finally:
         if should_close:
             connection.close()

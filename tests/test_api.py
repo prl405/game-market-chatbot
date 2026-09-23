@@ -122,6 +122,56 @@ def test_chart_response_model_limits_row_count() -> None:
         ChartSpecModel.model_validate(chart_spec)
 
 
+def test_histogram_chart_response_model_accepts_numeric_intervals() -> None:
+    chart_spec = {
+        "chart_type": "histogram",
+        "data": [
+            {"start": 0, "end": 5, "count": 3},
+            {"start": 5, "end": 10, "count": 7},
+        ],
+        "x_field": "start",
+        "x_end_field": "end",
+        "y_field": "count",
+        "title": "Score distribution",
+    }
+
+    assert ChartSpecModel.model_validate(chart_spec).x_end_field == "end"
+
+
+def test_histogram_chart_response_model_rejects_overlapping_intervals() -> None:
+    chart_spec = {
+        "chart_type": "histogram",
+        "data": [
+            {"start": 0, "end": 6, "count": 3},
+            {"start": 5, "end": 10, "count": 7},
+        ],
+        "x_field": "start",
+        "x_end_field": "end",
+        "y_field": "count",
+        "title": "Invalid distribution",
+    }
+
+    with pytest.raises(ValueError, match="non-overlapping"):
+        ChartSpecModel.model_validate(chart_spec)
+
+
+def test_histogram_chart_response_model_rejects_more_than_20_bins() -> None:
+    chart_spec = {
+        "chart_type": "histogram",
+        "data": [
+            {"start": index, "end": index + 1, "count": 1}
+            for index in range(21)
+        ],
+        "x_field": "start",
+        "x_end_field": "end",
+        "y_field": "count",
+        "title": "Too many bins",
+    }
+
+    with pytest.raises(ValueError, match="20 bins"):
+        ChartSpecModel.model_validate(chart_spec)
+
+
 def test_chat_transcripts_are_forwarded_independently(
     client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
