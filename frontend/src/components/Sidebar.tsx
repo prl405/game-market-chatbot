@@ -69,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Session runs list */}
           <div className="flex flex-col gap-2 pt-2">
             <span className="text-[11px] font-arcade-mono font-bold text-slate-500 uppercase px-1">
-              SAVED RUNS & MISSIONS
+              CURRENT CHATS
             </span>
             {sessions.map((session) => {
               const isActive = session.id === activeSessionId;
@@ -88,13 +88,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   >
                     <History className="w-4 h-4 shrink-0 stroke-[2.5]" />
                     <span className="truncate flex-1">
-                      {session.id === 'challenge-01'
-                        ? 'High Score Run #1'
-                        : session.id === 'boss-battle'
-                        ? 'Boss Battle Strategy'
-                        : session.id === 'high-score-run'
-                        ? 'Speedrun Analytics'
-                        : session.title.replace('.EXE', '')}
+                      {session.title.replace(/\.EXE$/i, '').replaceAll('_', ' ')}
                     </span>
                   </button>
                   {/* Delete button (if more than 1 session) */}
@@ -118,7 +112,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Bottom Description Box */}
         <div className="mt-auto p-3 border-t border-black bg-slate-100 text-[10px] font-arcade-mono text-slate-500">
-          Select a saved run to review past missions or start a new game session.
+          Chats stay available until you restart the app.
         </div>
       </aside>
     </>

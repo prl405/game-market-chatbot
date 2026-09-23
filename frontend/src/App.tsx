@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { AlignJustify } from 'lucide-react';
 import type { Session, Message, BackendConfig, OutlineItem } from './types';
-import { INITIAL_SESSIONS } from './data/initialData';
 import { Sidebar } from './components/Sidebar';
 import { OutlinePanel } from './components/OutlinePanel';
 import { BannerCard } from './components/BannerCard';
@@ -11,20 +10,25 @@ import { InputDock } from './components/InputDock';
 import { PromptPresetsModal } from './components/PromptPresetsModal';
 import { DEFAULT_BACKEND_CONFIG, sendChatRequest } from './services/llmClient';
 
-export default function App() {
-  const [sessions, setSessions] = useState<Session[]>(() => {
-    const saved = localStorage.getItem('arcade_ai_sessions');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return INITIAL_SESSIONS;
-      }
-    }
-    return INITIAL_SESSIONS;
-  });
+const createEmptySession = (runNumber: number): Session => {
+  const sessionCode = `#${Math.floor(100 + Math.random() * 900)}-CHAT`;
 
-  const [activeSessionId, setActiveSessionId] = useState<string>('challenge-01');
+  return {
+    id: `session-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    title: `CHAT_${String(runNumber).padStart(2, '0')}`,
+    sessionCode,
+    bannerTitle: 'CHAT SESSION',
+    bannerSubtitle: 'Send a prompt to begin your market analysis.',
+    createdAt: new Date().toISOString(),
+    outline: [],
+    messages: [],
+  };
+};
+
+export default function App() {
+  const [sessions, setSessions] = useState<Session[]>(() => [createEmptySession(1)]);
+
+  const [activeSessionId, setActiveSessionId] = useState<string>(() => sessions[0].id);
   const [backendConfig] = useState<BackendConfig>(() => {
     const saved = localStorage.getItem('arcade_ai_config');
     if (saved) {
@@ -49,18 +53,17 @@ export default function App() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // Sync sessions to localStorage
+  // Remove chat history saved by earlier versions; sessions are now temporary.
   useEffect(() => {
     try {
-      localStorage.setItem('arcade_ai_sessions', JSON.stringify(sessions));
+      localStorage.removeItem('arcade_ai_sessions');
     } catch {
-      // ignore storage quota errors
+      // Ignore unavailable browser storage.
     }
-  }, [sessions]);
+  }, []);
 
   // Active session helper
-  const activeSession =
-    sessions.find((s) => s.id === activeSessionId) || sessions[0] || INITIAL_SESSIONS[0];
+  const activeSession = sessions.find((session) => session.id === activeSessionId) ?? sessions[0];
 
   // Scroll to bottom
   const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
@@ -72,35 +75,22 @@ export default function App() {
   }, [activeSessionId]);
 
   const handleNewGame = () => {
-    const counter = sessions.length + 1;
-    const newId = `session-${Date.now()}`;
-    const newSession: Session = {
-      id: newId,
-      title: `CHALLENGE_0${counter}.EXE`,
-      sessionCode: `#${Math.floor(100 + Math.random() * 900)}-MISSION-VAL`,
-      bannerTitle: `ARCADE MISSION PROTOCOL // RUN #${counter}`,
-      bannerSubtitle:
-        'Tactical telemetry ready. Awaiting telemetry parameters, combat simulation, or custom LLM prompts.',
-      createdAt: new Date().toISOString(),
-      outline: [
-        { id: 'intro', title: 'Mission Briefing' },
-        { id: 'query', title: 'Initial Analysis' },
-      ],
-      messages: [],
-    };
+    const newSession = createEmptySession(sessions.length + 1);
     setSessions((prev) => [newSession, ...prev]);
-    setActiveSessionId(newId);
+    setActiveSessionId(newSession.id);
   };
 
   const handleDeleteSession = (id: string) => {
-    setSessions((prev) => {
-      const filtered = prev.filter((s) => s.id !== id);
-      if (filtered.length === 0) return INITIAL_SESSIONS;
-      if (activeSessionId === id) {
-        setActiveSessionId(filtered[0].id);
-      }
-      return filtered;
-    });
+    const remainingSessions = sessions.filter((session) => session.id !== id);
+    if (remainingSessions.length === 0) {
+      const emptySession = createEmptySession(1);
+      setSessions([emptySession]);
+      setActiveSessionId(emptySession.id);
+      return;
+    }
+
+    setSessions(remainingSessions);
+    if (activeSessionId === id) setActiveSessionId(remainingSessions[0].id);
   };
 
   const handleSendMessage = async (
@@ -270,12 +260,13 @@ export default function App() {
           className="flex-1 overflow-y-auto px-2 sm:px-6 pt-4 md:pt-6 pb-28 md:pb-32"
         >
           <div className="max-w-4xl mx-auto">
-            {/* Retro Banner Card matching image */}
-            <BannerCard
-              sessionCode={activeSession.sessionCode}
-              title={activeSession.bannerTitle}
-              subtitle={activeSession.bannerSubtitle}
-            />
+            {activeSession.messages.length > 0 && (
+              <BannerCard
+                sessionCode={activeSession.sessionCode}
+                title={activeSession.bannerTitle}
+                subtitle={activeSession.bannerSubtitle}
+              />
+            )}
 
             {/* Messages list */}
             {activeSession.messages.map((message) =>
