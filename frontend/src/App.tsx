@@ -259,14 +259,6 @@ export default function App() {
           ref={chatContainerRef}
           className="flex-1 overflow-y-auto px-2 sm:px-6 pt-4 md:pt-6 pb-28 md:pb-32"
         >
-          <div className="max-w-4xl mx-auto">
-            {activeSession.messages.length > 0 && (
-              <BannerCard
-                sessionCode={activeSession.sessionCode}
-                title={activeSession.bannerTitle}
-                subtitle={activeSession.bannerSubtitle}
-              />
-            )}
 
             {/* Messages list */}
             {activeSession.messages.map((message) =>
@@ -310,7 +302,6 @@ export default function App() {
             )}
 
             <div ref={messagesEndRef} className="h-4" />
-          </div>
         </div>
 
         {/* Floating Input Dock Area - doesn't cut page scrolling */}
