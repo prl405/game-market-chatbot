@@ -8,10 +8,6 @@ Available commands:
     game-market-chatbot ingest <source>
         Run the ingestion script for the named source.
         Available sources: gamalytics
-
-    game-market-chatbot app [streamlit args…]
-        Launch the Streamlit chat UI.
-        Extra arguments are forwarded to `streamlit run`.
 """
 
 from __future__ import annotations
@@ -35,8 +31,6 @@ def main() -> None:
         _handle_db(args[1:])
     elif command == "ingest":
         _handle_ingest(args[1:])
-    elif command == "app":
-        _handle_app(args[1:])
     else:
         print(f"Unknown command: {command!r}", file=sys.stderr)
         _print_help()
@@ -70,18 +64,6 @@ def _handle_ingest(args: list[str]) -> None:
 
     ingester_cls = REGISTRY[source]
     ingester_cls().ingest()
-
-
-def _handle_app(args: list[str]) -> None:
-    import subprocess
-    from pathlib import Path
-
-    app_path = Path(__file__).parent / "app.py"
-    sys.exit(
-        subprocess.call(
-            [sys.executable, "-m", "streamlit", "run", str(app_path), *args]
-        )
-    )
 
 
 def _print_help() -> None:

@@ -11,8 +11,8 @@ Tool loop
      - Predefined query tools and `run_sql_query` are executed via
        tools.dispatch.dispatch().
      - `render_chart` is NOT executed here — its arguments are captured as
-       a chart spec and returned on the AgentResponse for the UI layer to
-       render (see app.py). The model is told the chart was queued.
+             a chart spec and returned on the AgentResponse for the client to
+             render. The model is told the chart was queued.
 3. Tool results are appended to the conversation and the model is called
    again. This repeats until the model returns a plain text answer (or the
    round limit is reached).
@@ -27,7 +27,7 @@ Usage:
     response = chat([{"role": "user", "content": "Top 5 genres by sales?"}])
     print(response.text)
     if response.chart_spec:
-        ...  # hand the spec to the UI layer
+        ...  # hand the spec to the client
 
 Testing:
     Pass a mock `client` to chat() — no network calls are made. The mock

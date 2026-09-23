@@ -1,10 +1,8 @@
-"""
-UI-handled render_chart tool definition.
+"""Definition for the chart tool whose arguments are captured by the agent.
 
-render_chart is defined here so it travels with the rest of TOOLS, but it
-is deliberately absent from dispatch._FUNCTION_MAP: the agent layer captures
-its arguments as a chart spec and the UI layer (app.py / ui/charts.py)
-renders it. Dispatching this tool by name raises ValueError by design.
+render_chart is included with the model-facing tools but deliberately absent
+from dispatch._FUNCTION_MAP. The agent returns its arguments as a chart spec
+for the client to render; dispatching this tool by name raises ValueError.
 """
 
 from __future__ import annotations
@@ -18,7 +16,7 @@ _RENDER_CHART_DEFINITION: dict[str, Any] = {
     "function": {
         "name": RENDER_CHART_TOOL,
         "description": (
-            "Render a chart in the UI alongside your text answer. "
+            "Render a chart alongside your text answer. "
             "Call this AFTER fetching data with another tool — pass the rows "
             "you want to plot (keep it under ~50 rows; aggregate or trim "
             "larger results first). The chart appears next to your reply, so "
