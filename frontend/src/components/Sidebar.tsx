@@ -37,8 +37,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Brand header at top of sidebar */}
         <div className="h-14 border-b-2 border-black flex items-center justify-between px-4 bg-white shrink-0">
           <div className="flex items-center gap-2.5">
-            <span className="font-arcade text-xl font-bold tracking-wider text-[#2B66FF] uppercase">
-              ARCADE AI
+            <span className="font-arcade text-l font-bold tracking-wider text-[#2B66FF] uppercase">
+              GameGauge AI
             </span>
             <div className="w-7 h-7 bg-[#FFD200] border-2 border-black flex items-center justify-center retro-shadow-sm">
               <Gamepad2 className="w-4 h-4 text-black stroke-[2.5]" />
@@ -63,7 +63,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="w-full py-2.5 px-3 bg-[#2B66FF] hover:bg-[#2052D4] text-white font-arcade-mono font-bold text-sm tracking-wider uppercase border-2 border-black retro-shadow retro-shadow-active flex items-center justify-center gap-2 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
-            <span>NEW GAME</span>
+            <span>NEW CHAT</span>
           </button>
 
           {/* Session runs list */}

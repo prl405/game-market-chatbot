@@ -107,7 +107,7 @@ export default function App() {
       id: `msg-u-${Date.now()}`,
       role: 'user',
       timestamp: timeStr,
-      senderTitle: `USER // ${timeStr}`,
+      senderTitle: `USER`,
       content: attachment
         ? `${text}\n[Attached File: ${attachment.name} (${attachment.size})]`
         : text,

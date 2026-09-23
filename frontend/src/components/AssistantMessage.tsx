@@ -33,8 +33,8 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({ message }) =
       className="flex items-start gap-2.5 my-4 max-w-4xl mx-auto w-full px-2 sm:px-4"
     >
       {/* Yellow Gamepad Avatar on the left */}
-      <div className="w-8 h-8 sm:w-9 sm:h-9 bg-[#FFD200] border-2 border-black flex items-center justify-center shrink-0 retro-shadow-sm">
-        <Gamepad2 className="w-4 h-4 sm:w-5 sm:h-5 text-black stroke-[2.5]" />
+      <div className="w-8 h-8 sm:w-9 sm:h-9 bg-[#2B66FF] border-2 border-black flex items-center justify-center shrink-0 retro-shadow-sm">
+        <Gamepad2 className="w-4 h-4 sm:w-5 sm:h-5 text-white stroke-[2.5]" />
       </div>
 
       {/* Main Message Card */}
