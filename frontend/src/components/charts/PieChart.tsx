@@ -7,7 +7,7 @@ interface PieSlice {
   value: number;
 }
 
-interface RetroPieChartProps {
+interface PieChartProps {
   slices: PieSlice[];
   unit?: string;
 }
@@ -15,7 +15,7 @@ interface RetroPieChartProps {
 const SIZE = 220;
 const RADIUS = SIZE / 2 - 10;
 
-export const RetroPieChart: React.FC<RetroPieChartProps> = ({ slices, unit }) => {
+export const PieChart: React.FC<PieChartProps> = ({ slices, unit }) => {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
   const pieGenerator = d3pie<PieSlice>()

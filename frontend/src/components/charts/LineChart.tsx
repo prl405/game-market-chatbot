@@ -13,7 +13,7 @@ import {
   niceMax,
 } from './scales';
 
-interface RetroLineChartProps {
+interface LineChartProps {
   labels: string[];
   values: number[];
   color?: string;
@@ -22,7 +22,7 @@ interface RetroLineChartProps {
   yLabel?: string;
 }
 
-export const RetroLineChart: React.FC<RetroLineChartProps> = ({ labels, values, color, unit, xLabel, yLabel }) => {
+export const LineChart: React.FC<LineChartProps> = ({ labels, values, color, unit, xLabel, yLabel }) => {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const { svgWidth, svgHeight, paddingLeft, paddingRight, paddingTop } = CHART_DIMENSIONS;
 

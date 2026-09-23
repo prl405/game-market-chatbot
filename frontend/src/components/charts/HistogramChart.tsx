@@ -17,13 +17,13 @@ interface HistogramBin {
   count: number;
 }
 
-interface RetroHistogramChartProps {
+interface HistogramChartProps {
   bins: HistogramBin[];
   xLabel: string;
   yLabel: string;
 }
 
-export const RetroHistogramChart: React.FC<RetroHistogramChartProps> = ({ bins, xLabel, yLabel }) => {
+export const HistogramChart: React.FC<HistogramChartProps> = ({ bins, xLabel, yLabel }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const { svgWidth, svgHeight, paddingLeft, paddingRight, paddingTop } = CHART_DIMENSIONS;
   const minimum = bins[0]?.start ?? 0;

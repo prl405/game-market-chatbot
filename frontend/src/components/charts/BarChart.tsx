@@ -12,7 +12,7 @@ import {
   niceMax,
 } from './scales';
 
-interface RetroBarChartProps {
+interface BarChartProps {
   labels: string[];
   values: number[];
   color?: string;
@@ -21,7 +21,7 @@ interface RetroBarChartProps {
   yLabel?: string;
 }
 
-export const RetroBarChart: React.FC<RetroBarChartProps> = ({ labels, values, color, unit, xLabel, yLabel }) => {
+export const BarChart: React.FC<BarChartProps> = ({ labels, values, color, unit, xLabel, yLabel }) => {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const { svgWidth, svgHeight, paddingLeft, paddingRight, paddingTop } = CHART_DIMENSIONS;
 

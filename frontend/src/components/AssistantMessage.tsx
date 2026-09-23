@@ -3,7 +3,7 @@ import { Gamepad2, Copy, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Message } from '../types';
-import { RetroChart } from './RetroChart';
+import { ChartRenderer } from './ChartSpecRenderer';
 
 interface AssistantMessageProps {
   message: Message;
@@ -85,7 +85,7 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({ message }) =
               </ReactMarkdown>
             </div>
           ) : (
-            <RetroChart key={`chart-${index}`} data={block.chart} />
+            <ChartRenderer key={`chart-${index}`} data={block.chart} />
           ))}
           {message.status === 'streaming' && (
             <span className="inline-block w-2 h-4 bg-[#2B66FF] animate-pulse ml-1 align-middle" />

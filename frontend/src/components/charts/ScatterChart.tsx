@@ -7,7 +7,7 @@ interface ScatterPoint {
   label?: string;
 }
 
-interface RetroScatterChartProps {
+interface ScatterChartProps {
   points: ScatterPoint[];
   color?: string;
   xUnit?: string;
@@ -16,7 +16,7 @@ interface RetroScatterChartProps {
   yLabel?: string;
 }
 
-export const RetroScatterChart: React.FC<RetroScatterChartProps> = ({ points, color, xUnit, yUnit, xLabel, yLabel }) => {
+export const ScatterChart: React.FC<ScatterChartProps> = ({ points, color, xUnit, yUnit, xLabel, yLabel }) => {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const { svgWidth, svgHeight, paddingLeft, paddingRight, paddingTop } = CHART_DIMENSIONS;
 

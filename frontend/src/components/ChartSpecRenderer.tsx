@@ -8,17 +8,17 @@
 
 import React from 'react';
 import type { ChartSpec } from '../types';
-import { RetroBarChart } from './charts/RetroBarChart';
-import { RetroLineChart } from './charts/RetroLineChart';
-import { RetroScatterChart } from './charts/RetroScatterChart';
-import { RetroPieChart } from './charts/RetroPieChart';
-import { RetroHistogramChart } from './charts/RetroHistogramChart';
+import { BarChart } from './charts/BarChart';
+import { LineChart } from './charts/LineChart';
+import { ScatterChart } from './charts/ScatterChart';
+import { PieChart } from './charts/PieChart';
+import { HistogramChart } from './charts/HistogramChart';
 
-interface RetroChartProps {
+interface ChartRendererProps {
   data: ChartSpec;
 }
 
-export const RetroChart: React.FC<RetroChartProps> = ({ data: spec }) => {
+export const ChartRenderer: React.FC<ChartRendererProps> = ({ data: spec }) => {
   const { chart_type, data, x_field, y_field, title } = spec;
 
   const labels = data.map((row) => String(row[x_field] ?? ''));
@@ -32,20 +32,20 @@ export const RetroChart: React.FC<RetroChartProps> = ({ data: spec }) => {
         </span>
       </div>
 
-      {chart_type === 'bar' && <RetroBarChart labels={labels} values={values} xLabel={x_field} yLabel={y_field} />}
-      {chart_type === 'line' && <RetroLineChart labels={labels} values={values} xLabel={x_field} yLabel={y_field} />}
+      {chart_type === 'bar' && <BarChart labels={labels} values={values} xLabel={x_field} yLabel={y_field} />}
+      {chart_type === 'line' && <LineChart labels={labels} values={values} xLabel={x_field} yLabel={y_field} />}
       {chart_type === 'scatter' && (
-        <RetroScatterChart
+        <ScatterChart
           points={data.map((row) => ({ x: Number(row[x_field] ?? 0), y: Number(row[y_field] ?? 0) }))}
           xLabel={x_field}
           yLabel={y_field}
         />
       )}
       {chart_type === 'pie' && (
-        <RetroPieChart slices={data.map((row) => ({ label: String(row[x_field] ?? ''), value: Number(row[y_field] ?? 0) }))} />
+        <PieChart slices={data.map((row) => ({ label: String(row[x_field] ?? ''), value: Number(row[y_field] ?? 0) }))} />
       )}
       {chart_type === 'histogram' && spec.x_end_field && (
-        <RetroHistogramChart
+        <HistogramChart
           bins={data.map((row) => ({
             start: Number(row[x_field]),
             end: Number(row[spec.x_end_field!]),
