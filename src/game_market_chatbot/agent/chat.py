@@ -64,6 +64,7 @@ logger = logging.getLogger(__name__)
 # Safety cap on LLM → tool → LLM iterations within a single chat turn.
 # Prevents runaway loops if the model keeps requesting tools.
 MAX_TOOL_ROUNDS = 10
+MAX_TOKENS = 15000
 
 
 # ---------------------------------------------------------------------------
@@ -147,6 +148,7 @@ def chat(
             "model": model,
             "messages": conversation,
             "tools": TOOLS,
+            "max_tokens": MAX_TOKENS,
         }
         if temperature is not None:
             create_kwargs["temperature"] = temperature
