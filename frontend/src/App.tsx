@@ -1,0 +1,353 @@
+import { useState, useRef, useEffect } from 'react';
+import { AlignJustify } from 'lucide-react';
+import type { Session, Message, BackendConfig, OutlineItem } from './types';
+import { INITIAL_SESSIONS } from './data/initialData';
+import { Sidebar } from './components/Sidebar';
+import { OutlinePanel } from './components/OutlinePanel';
+import { BannerCard } from './components/BannerCard';
+import { UserMessage } from './components/UserMessage';
+import { AssistantMessage } from './components/AssistantMessage';
+import { InputDock } from './components/InputDock';
+import { PromptPresetsModal } from './components/PromptPresetsModal';
+import { DEFAULT_BACKEND_CONFIG, sendChatRequest } from './services/llmClient';
+
+export default function App() {
+  const [sessions, setSessions] = useState<Session[]>(() => {
+    const saved = localStorage.getItem('arcade_ai_sessions');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return INITIAL_SESSIONS;
+      }
+    }
+    return INITIAL_SESSIONS;
+  });
+
+  const [activeSessionId, setActiveSessionId] = useState<string>('challenge-01');
+  const [backendConfig] = useState<BackendConfig>(() => {
+    const saved = localStorage.getItem('arcade_ai_config');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return DEFAULT_BACKEND_CONFIG;
+      }
+    }
+    return DEFAULT_BACKEND_CONFIG;
+  });
+
+  const [outlineOpen, setOutlineOpen] = useState<boolean>(true);
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768;
+    }
+    return true;
+  });
+  const [isPresetsOpen, setIsPresetsOpen] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Sync sessions to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('arcade_ai_sessions', JSON.stringify(sessions));
+    } catch {
+      // ignore storage quota errors
+    }
+  }, [sessions]);
+
+  // Active session helper
+  const activeSession =
+    sessions.find((s) => s.id === activeSessionId) || sessions[0] || INITIAL_SESSIONS[0];
+
+  // Scroll to bottom
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
+  };
+
+  useEffect(() => {
+    scrollToBottom('auto');
+  }, [activeSessionId]);
+
+  const handleNewGame = () => {
+    const counter = sessions.length + 1;
+    const newId = `session-${Date.now()}`;
+    const newSession: Session = {
+      id: newId,
+      title: `CHALLENGE_0${counter}.EXE`,
+      sessionCode: `#${Math.floor(100 + Math.random() * 900)}-MISSION-VAL`,
+      bannerTitle: `ARCADE MISSION PROTOCOL // RUN #${counter}`,
+      bannerSubtitle:
+        'Tactical telemetry ready. Awaiting telemetry parameters, combat simulation, or custom LLM prompts.',
+      createdAt: new Date().toISOString(),
+      outline: [
+        { id: 'intro', title: 'Mission Briefing' },
+        { id: 'query', title: 'Initial Analysis' },
+      ],
+      messages: [],
+    };
+    setSessions((prev) => [newSession, ...prev]);
+    setActiveSessionId(newId);
+  };
+
+  const handleDeleteSession = (id: string) => {
+    setSessions((prev) => {
+      const filtered = prev.filter((s) => s.id !== id);
+      if (filtered.length === 0) return INITIAL_SESSIONS;
+      if (activeSessionId === id) {
+        setActiveSessionId(filtered[0].id);
+      }
+      return filtered;
+    });
+  };
+
+  const handleSendMessage = async (
+    text: string,
+    attachment?: { name: string; size: string }
+  ) => {
+    if (!text.trim() && !attachment) return;
+
+    const timeStr = new Date().toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const userMessage: Message = {
+      id: `msg-u-${Date.now()}`,
+      role: 'user',
+      timestamp: timeStr,
+      senderTitle: `USER // ${timeStr}`,
+      content: attachment
+        ? `${text}\n[Attached File: ${attachment.name} (${attachment.size})]`
+        : text,
+      status: 'idle',
+    };
+
+    // Update active session with user message
+    const updatedMessages = [...activeSession.messages, userMessage];
+
+    // Also update outline if it's a new heading topic
+    const newOutline = [...activeSession.outline];
+    if (newOutline.length < 6) {
+      newOutline.push({
+        id: `topic-${Date.now()}`,
+        title: text.slice(0, 24) + (text.length > 24 ? '...' : ''),
+        messageId: userMessage.id,
+      });
+    }
+
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeSessionId
+          ? { ...s, messages: updatedMessages, outline: newOutline }
+          : s
+      )
+    );
+
+    setIsLoading(true);
+    setTimeout(() => scrollToBottom('smooth'), 50);
+
+    try {
+      const response = await sendChatRequest(updatedMessages, backendConfig);
+
+      const botMessage: Message = {
+        id: `msg-b-${Date.now()}`,
+        role: 'assistant',
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+        senderTitle: 'PIXELBOT 64 // MARKET AI',
+        content: response.content,
+        chartSpec: response.chartSpec,
+        status: 'idle',
+      };
+
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === activeSessionId
+            ? { ...s, messages: [...updatedMessages, botMessage] }
+            : s
+        )
+      );
+    } catch (err: unknown) {
+      const errorMsg =
+        err instanceof Error ? err.message : 'Unknown communication error';
+      const errorMessage: Message = {
+        id: `msg-err-${Date.now()}`,
+        role: 'assistant',
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+        senderTitle: 'PIXELBOT 64 // SYSTEM ERROR',
+        content: `ALERT // BACKEND OFFLINE OR UNREACHABLE:\n\n${errorMsg}\n\nTIP: Check that the FastAPI server is running and reachable.`,
+        status: 'error',
+      };
+
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === activeSessionId
+            ? { ...s, messages: [...updatedMessages, errorMessage] }
+            : s
+        )
+      );
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => scrollToBottom('smooth'), 100);
+    }
+  };
+
+  const handleOutlineClick = (item: OutlineItem) => {
+    if (item.messageId) {
+      const el = document.getElementById(item.messageId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-4', 'ring-[#FFD200]');
+        setTimeout(() => {
+          el.classList.remove('ring-4', 'ring-[#FFD200]');
+        }, 1500);
+        return;
+      }
+    }
+    // If not matching specific message, jump to top banner or first relevant message
+    chatContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  return (
+    <div className="flex h-screen w-screen overflow-hidden bg-[#EEF2F6]">
+      {/* Left Sidebar: Runs & New Game */}
+      <Sidebar
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        onSelectSession={setActiveSessionId}
+        onNewGame={handleNewGame}
+        onDeleteSession={handleDeleteSession}
+        isOpen={sidebarOpen}
+        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+        onCloseMobile={() => setSidebarOpen(false)}
+      />
+
+      {/* Center Panel: Chat conversation stream & bottom dock - extends to top of viewport */}
+      <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#EEF2F6] relative">
+        {/* Floating Utilities (Outline restore if collapsed) */}
+        {!outlineOpen && (
+          <div className="absolute top-3 right-4 z-10">
+            <button
+              onClick={() => {
+                setOutlineOpen(true);
+              }}
+              title="Show Outline"
+              className="flex items-center gap-1.5 h-8 px-2.5 bg-white hover:bg-[#FFD200] border-2 border-black font-arcade-mono text-xs font-bold uppercase retro-shadow-sm cursor-pointer"
+            >
+              <AlignJustify className="w-3.5 h-3.5" />
+              <span>OUTLINE</span>
+            </button>
+          </div>
+        )}
+
+        {/* Sidebar restore button (when collapsed) */}
+        {!sidebarOpen && (
+          <div className="absolute top-3 left-3 sm:left-4 z-10">
+            <button
+              onClick={() => {
+                setSidebarOpen(true);
+              }}
+              title="Show Sidebar"
+              className="flex items-center gap-1.5 h-8 px-2.5 bg-white hover:bg-[#FFD200] border-2 border-black font-arcade-mono text-xs font-bold uppercase retro-shadow-sm cursor-pointer"
+            >
+              <AlignJustify className="w-3.5 h-3.5 text-black" />
+              <span>SIDEBAR</span>
+            </button>
+          </div>
+        )}
+
+        {/* Scrollable messages area extending continuously to bottom of viewport */}
+        <div
+          ref={chatContainerRef}
+          className="flex-1 overflow-y-auto px-2 sm:px-6 pt-4 md:pt-6 pb-28 md:pb-32"
+        >
+          <div className="max-w-4xl mx-auto">
+            {/* Retro Banner Card matching image */}
+            <BannerCard
+              sessionCode={activeSession.sessionCode}
+              title={activeSession.bannerTitle}
+              subtitle={activeSession.bannerSubtitle}
+            />
+
+            {/* Messages list */}
+            {activeSession.messages.map((message) =>
+              message.role === 'user' ? (
+                <UserMessage key={message.id} message={message} />
+              ) : (
+                <AssistantMessage key={message.id} message={message} />
+              )
+            )}
+
+            {/* Loading indicator while awaiting the backend response */}
+            {isLoading && (
+              <AssistantMessage
+                message={{
+                  id: 'loading-preview',
+                  role: 'assistant',
+                  timestamp: 'NOW',
+                  senderTitle: 'PIXELBOT 64 // MARKET AI',
+                  content: 'Thinking\u2026',
+                  status: 'streaming',
+                }}
+              />
+            )}
+
+            {/* Empty state if new empty run */}
+            {activeSession.messages.length === 0 && !isLoading && (
+              <div className="my-12 text-center p-8 bg-white border-2 border-black max-w-xl mx-auto retro-shadow">
+                <div className="font-arcade text-lg font-bold text-black uppercase mb-2">
+                  AWAITING INPUT COMMAND
+                </div>
+                <p className="font-arcade-body text-xs sm:text-sm text-slate-600 mb-4">
+                  Send a query below or select a tactical preset.
+                </p>
+                <button
+                  onClick={() => setIsPresetsOpen(true)}
+                  className="px-4 py-2 bg-[#FFD200] hover:bg-yellow-400 font-arcade-mono font-bold text-xs uppercase border-2 border-black retro-shadow-sm cursor-pointer"
+                >
+                  View Prompt Presets
+                </button>
+              </div>
+            )}
+
+            <div ref={messagesEndRef} className="h-4" />
+          </div>
+        </div>
+
+        {/* Floating Input Dock Area - doesn't cut page scrolling */}
+        <div className="absolute bottom-0 inset-x-0 pointer-events-none bg-gradient-to-t from-[#EEF2F6] via-[#EEF2F6]/90 to-transparent pt-6">
+          <div className="pointer-events-auto">
+            <InputDock
+              onSendMessage={handleSendMessage}
+              isLoading={isLoading}
+              onOpenPresets={() => setIsPresetsOpen(true)}
+            />
+          </div>
+        </div>
+      </main>
+
+      {/* Right Panel: Outline / Table of Contents */}
+      <OutlinePanel
+        items={activeSession.outline}
+        onItemClick={handleOutlineClick}
+        isOpen={outlineOpen}
+        onToggleOutline={() => setOutlineOpen(false)}
+      />
+
+      {/* Prompt Presets Modal */}
+      <PromptPresetsModal
+        isOpen={isPresetsOpen}
+        onClose={() => setIsPresetsOpen(false)}
+        onSelectPreset={(p) => handleSendMessage(p)}
+      />
+    </div>
+  );
+}
