@@ -1,4 +1,4 @@
-import type { BackendConfig, ChartSpec, Message } from '../types';
+import type { BackendConfig, ChartSpec, Message, ResponseBlock } from '../types';
 
 export const DEFAULT_BACKEND_CONFIG: BackendConfig = {
   endpoint: 'http://localhost:8000/api/chat',
@@ -7,6 +7,48 @@ export const DEFAULT_BACKEND_CONFIG: BackendConfig = {
 export interface ChatResponse {
   content: string;
   chartSpec: ChartSpec | null;
+  blocks: ResponseBlock[];
+}
+
+function isChartSpec(value: unknown): value is ChartSpec {
+  if (!value || typeof value !== 'object') return false;
+  const spec = value as Partial<ChartSpec>;
+  if (!['bar', 'line', 'scatter', 'pie'].includes(String(spec.chart_type))) return false;
+  if (!Array.isArray(spec.data) || spec.data.length === 0 || spec.data.length > 50) return false;
+  if (typeof spec.x_field !== 'string' || typeof spec.y_field !== 'string') return false;
+  if (!spec.x_field || !spec.y_field || typeof spec.title !== 'string') return false;
+
+  return spec.data.every((row) => {
+    if (!row || typeof row !== 'object') return false;
+    const values = row as Record<string, unknown>;
+    if (!Object.hasOwn(values, spec.x_field!) || !Object.hasOwn(values, spec.y_field!)) return false;
+    const x = values[spec.x_field!];
+    const y = values[spec.y_field!];
+    return typeof y === 'number' && Number.isFinite(y) &&
+      (spec.chart_type !== 'scatter' || (typeof x === 'number' && Number.isFinite(x))) &&
+      (spec.chart_type !== 'pie' || y >= 0);
+  });
+}
+
+export function parseResponseBlocks(value: unknown, text: string, legacyChart: unknown): ResponseBlock[] {
+  if (Array.isArray(value)) {
+    const blocks = value.flatMap((block): ResponseBlock[] => {
+      if (!block || typeof block !== 'object') return [];
+      const candidate = block as Record<string, unknown>;
+      if (candidate.type === 'markdown' && typeof candidate.content === 'string') {
+        return [{ type: 'markdown', content: candidate.content }];
+      }
+      if (candidate.type === 'chart' && isChartSpec(candidate.chart)) {
+        return [{ type: 'chart', chart: candidate.chart }];
+      }
+      return [{ type: 'markdown', content: 'Chart unavailable: the chart data was invalid.' }];
+    });
+    if (blocks.length === 0 && text) return [{ type: 'markdown', content: text }];
+    return blocks;
+  }
+  const blocks: ResponseBlock[] = text ? [{ type: 'markdown', content: text }] : [];
+  if (isChartSpec(legacyChart)) blocks.push({ type: 'chart', chart: legacyChart });
+  return blocks;
 }
 
 /**
@@ -70,5 +112,6 @@ export async function sendChatRequest(
   return {
     content: json.text ?? '',
     chartSpec: json.chart_spec ?? null,
+    blocks: parseResponseBlocks(json.blocks, json.text ?? '', json.chart_spec),
   };
 }

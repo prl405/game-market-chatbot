@@ -3,7 +3,6 @@ import { AlignJustify } from 'lucide-react';
 import type { Session, Message, BackendConfig, OutlineItem } from './types';
 import { Sidebar } from './components/Sidebar';
 import { OutlinePanel } from './components/OutlinePanel';
-import { BannerCard } from './components/BannerCard';
 import { UserMessage } from './components/UserMessage';
 import { AssistantMessage } from './components/AssistantMessage';
 import { InputDock } from './components/InputDock';
@@ -152,6 +151,7 @@ export default function App() {
         senderTitle: 'PIXELBOT 64 // MARKET AI',
         content: response.content,
         chartSpec: response.chartSpec,
+        contentBlocks: response.blocks,
         status: 'idle',
       };
 

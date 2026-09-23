@@ -1,5 +1,7 @@
 import React from 'react';
 import { Gamepad2, Copy, Check } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import type { Message } from '../types';
 import { RetroChart } from './RetroChart';
 
@@ -9,9 +11,18 @@ interface AssistantMessageProps {
 
 export const AssistantMessage: React.FC<AssistantMessageProps> = ({ message }) => {
   const [copied, setCopied] = React.useState(false);
+  const blocks = message.contentBlocks ?? [
+    ...(message.content ? [{ type: 'markdown' as const, content: message.content }] : []),
+    ...(message.chartSpec ? [{ type: 'chart' as const, chart: message.chartSpec }] : []),
+  ];
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(message.content);
+    const text = blocks.map((block) => block.type === 'markdown'
+      ? block.content
+      : `[Chart: ${block.chart.title}]\n${block.chart.data
+        .map((row) => `${String(row[block.chart.x_field])}: ${String(row[block.chart.y_field])}`)
+        .join('\n')}`).join('\n\n');
+    navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -52,17 +63,33 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({ message }) =
         </div>
 
         {/* Text Content */}
-        <div className="font-arcade-body text-sm sm:text-base text-slate-900 leading-relaxed space-y-3 font-normal">
-          {message.content ? (
-            <p className="whitespace-pre-wrap">{message.content}</p>
-          ) : null}
+        <div className="font-arcade-body text-sm sm:text-base text-slate-900 leading-relaxed space-y-4 font-normal break-words">
+          {blocks.map((block, index) => block.type === 'markdown' ? (
+            <div key={`markdown-${index}`} className="space-y-3 [&_h1]:font-bold [&_h1]:text-xl [&_h1]:leading-tight [&_h2]:font-bold [&_h2]:text-lg [&_h2]:leading-tight [&_h3]:font-bold [&_h3]:text-base [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:pl-1 [&_blockquote]:border-l-4 [&_blockquote]:border-[#2B66FF] [&_blockquote]:pl-3 [&_blockquote]:text-slate-600 [&_a]:text-[#1747B8] [&_a]:underline [&_code]:break-all [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_pre]:border [&_pre]:border-slate-300 [&_pre]:bg-slate-100 [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  table: ({ children }) => (
+                    <div className="max-w-full overflow-x-auto border border-slate-300">
+                      <table className="min-w-full border-collapse text-left text-sm">{children}</table>
+                    </div>
+                  ),
+                  th: ({ children }) => <th className="whitespace-nowrap border border-slate-300 bg-slate-100 px-2 py-1.5 font-bold">{children}</th>,
+                  td: ({ children }) => <td className="border border-slate-300 px-2 py-1.5 align-top">{children}</td>,
+                  a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer">{children}</a>,
+                }}
+              >
+                {block.content}
+              </ReactMarkdown>
+            </div>
+          ) : (
+            <RetroChart key={`chart-${index}`} data={block.chart} />
+          ))}
           {message.status === 'streaming' && (
             <span className="inline-block w-2 h-4 bg-[#2B66FF] animate-pulse ml-1 align-middle" />
           )}
         </div>
 
-        {/* Chart rendered from the agent's chart_spec, if present */}
-        {message.chartSpec && <RetroChart data={message.chartSpec} />}
       </div>
     </div>
   );

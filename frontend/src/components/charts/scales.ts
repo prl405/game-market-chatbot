@@ -6,11 +6,11 @@ export const RETRO_COLORS = ['#2B66FF', '#FFD200', '#A855F7', '#22C55E', '#EF444
 
 export const CHART_DIMENSIONS = {
   svgWidth: 600,
-  svgHeight: 220,
-  paddingLeft: 45,
-  paddingRight: 20,
-  paddingTop: 20,
-  paddingBottom: 30,
+  svgHeight: 300,
+  paddingLeft: 68,
+  paddingRight: 24,
+  paddingTop: 28,
+  paddingBottom: 106,
 };
 
 export const chartInnerWidth =
@@ -37,9 +37,20 @@ export function buildYTicks(maxVal: number): number[] {
 
 export function buildBandScale(labels: string[]) {
   return scaleBand<string>()
-    .domain(labels)
+    .domain(labels.map((_, index) => String(index)))
     .range([CHART_DIMENSIONS.paddingLeft, CHART_DIMENSIONS.svgWidth - CHART_DIMENSIONS.paddingRight])
     .padding(0.3);
+}
+
+export function formatChartValue(value: number): string {
+  return new Intl.NumberFormat(undefined, {
+    notation: Math.abs(value) >= 1000 ? 'compact' : 'standard',
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
+export function chartLabelStride(count: number): number {
+  return Math.max(1, Math.ceil(count / 12));
 }
 
 export function buildYScale(maxVal: number) {

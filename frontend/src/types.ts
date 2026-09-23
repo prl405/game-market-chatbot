@@ -10,6 +10,10 @@ export interface ChartSpec {
   title: string;
 }
 
+export type ResponseBlock =
+  | { type: 'markdown'; content: string }
+  | { type: 'chart'; chart: ChartSpec };
+
 export interface Message {
   id: string;
   role: Role;
@@ -17,6 +21,7 @@ export interface Message {
   timestamp: string;
   senderTitle?: string; // e.g. "PIXELBOT 64 // MARKET AI" or "USER"
   chartSpec?: ChartSpec | null;
+  contentBlocks?: ResponseBlock[];
   status?: 'idle' | 'streaming' | 'error';
   sectionAnchorId?: string; // for Outline linking
 }

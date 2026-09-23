@@ -30,6 +30,7 @@ from game_market_chatbot.tools.query_sales import (
     get_games_by_price_range,
     get_top_games_by_copies_sold,
 )
+from game_market_chatbot.tools.chart_spec import COMPOSE_RESPONSE_TOOL
 from game_market_chatbot.tools.dispatch import RENDER_CHART_TOOL, TOOLS, dispatch
 
 
@@ -490,6 +491,8 @@ class TestToolsRegistry:
             "run_sql_query",
             # UI-handled tool (Task 6): no backing function by design.
             RENDER_CHART_TOOL,
+            # Captured by the agent to define ordered frontend content.
+            COMPOSE_RESPONSE_TOOL,
         }
         assert names == expected
 
@@ -511,8 +514,8 @@ class TestToolsRegistry:
         from game_market_chatbot.tools.dispatch import _FUNCTION_MAP
         for tool in TOOLS:
             name = tool["function"]["name"]
-            # render_chart is executed by the UI layer, not dispatched here.
-            if name == RENDER_CHART_TOOL:
+            # These tools are captured by the agent, not the query dispatcher.
+            if name in {RENDER_CHART_TOOL, COMPOSE_RESPONSE_TOOL}:
                 continue
             assert name in _FUNCTION_MAP, \
                 f"Tool '{name}' has no matching function in _FUNCTION_MAP"

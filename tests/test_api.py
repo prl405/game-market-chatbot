@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from game_market_chatbot.agent.chat import AgentResponse
+from game_market_chatbot.api.models import ChartSpecModel
 from game_market_chatbot.api import routes
 from game_market_chatbot.api.app import create_app
 
@@ -70,7 +71,55 @@ def test_chat_forwards_transcript_and_serializes_chart_spec(
     assert response.json() == {
         "text": "Here are the results.",
         "chart_spec": chart_spec,
+        "blocks": [
+            {"type": "markdown", "content": "Here are the results."},
+            {"type": "chart", "chart": chart_spec},
+        ],
     }
+
+
+@pytest.mark.parametrize(
+    "chart_spec",
+    [
+        {
+            "chart_type": "bar",
+            "data": [{"genre": "RPG", "copies": float("nan")}],
+            "x_field": "genre",
+            "y_field": "copies",
+            "title": "Invalid value",
+        },
+        {
+            "chart_type": "scatter",
+            "data": [{"x": "one", "y": 2}],
+            "x_field": "x",
+            "y_field": "y",
+            "title": "Invalid x value",
+        },
+        {
+            "chart_type": "pie",
+            "data": [{"label": "A", "value": -1}],
+            "x_field": "label",
+            "y_field": "value",
+            "title": "Negative slice",
+        },
+    ],
+)
+def test_chart_response_model_rejects_invalid_values(chart_spec: dict[str, Any]) -> None:
+    with pytest.raises(ValueError):
+        ChartSpecModel.model_validate(chart_spec)
+
+
+def test_chart_response_model_limits_row_count() -> None:
+    chart_spec = {
+        "chart_type": "bar",
+        "data": [{"label": str(index), "value": index} for index in range(51)],
+        "x_field": "label",
+        "y_field": "value",
+        "title": "Too many rows",
+    }
+
+    with pytest.raises(ValueError):
+        ChartSpecModel.model_validate(chart_spec)
 
 
 def test_chat_transcripts_are_forwarded_independently(

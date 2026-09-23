@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import time
 from typing import Any, Callable
 
+from game_market_chatbot.tools.chart_spec import COMPOSE_RESPONSE_TOOL
 from game_market_chatbot.tools.dispatch import RENDER_CHART_TOOL
 
 
@@ -20,7 +22,7 @@ def parse_arguments(arguments: str | dict | None) -> dict[str, Any]:
 
 
 def normalise_chart_spec(args: dict[str, Any]) -> dict[str, Any]:
-    """Build a chart spec while tolerating JSON-encoded data rows."""
+    """Build a chart spec and reject malformed data before it reaches the UI."""
     data = args.get("data", [])
     if isinstance(data, str):
         try:
@@ -28,12 +30,35 @@ def normalise_chart_spec(args: dict[str, Any]) -> dict[str, Any]:
         except json.JSONDecodeError:
             data = []
 
+    chart_type = args.get("chart_type", "bar")
+    x_field = args.get("x_field")
+    y_field = args.get("y_field")
+    if not isinstance(chart_type, str) or chart_type not in {"bar", "line", "scatter", "pie"}:
+        raise ValueError("Unsupported chart type.")
+    if not isinstance(data, list) or not 1 <= len(data) <= 50:
+        raise ValueError("Chart data must contain between 1 and 50 rows.")
+    if not isinstance(x_field, str) or not x_field or not isinstance(y_field, str) or not y_field:
+        raise ValueError("Chart x_field and y_field must be non-empty strings.")
+
+    for row in data:
+        if not isinstance(row, dict) or x_field not in row or y_field not in row:
+            raise ValueError("Each chart row must contain the plotted fields.")
+        y_value = row[y_field]
+        if isinstance(y_value, bool) or not isinstance(y_value, (int, float)) or not math.isfinite(y_value):
+            raise ValueError("Chart y values must be finite numbers.")
+        if chart_type == "scatter":
+            x_value = row[x_field]
+            if isinstance(x_value, bool) or not isinstance(x_value, (int, float)) or not math.isfinite(x_value):
+                raise ValueError("Scatter x values must be finite numbers.")
+        if chart_type == "pie" and y_value < 0:
+            raise ValueError("Pie values cannot be negative.")
+
     return {
-        "chart_type": args.get("chart_type", "bar"),
+        "chart_type": chart_type,
         "data": data,
-        "x_field": args.get("x_field"),
-        "y_field": args.get("y_field"),
-        "title": args.get("title", ""),
+        "x_field": x_field,
+        "y_field": y_field,
+        "title": str(args.get("title", "")),
     }
 
 
@@ -82,7 +107,14 @@ def execute_tool_call(
     start = time.perf_counter()
 
     if name == RENDER_CHART_TOOL:
-        spec = normalise_chart_spec(args)
+        try:
+            spec = normalise_chart_spec(args)
+        except ValueError as exc:
+            logger.info(
+                "tool_call",
+                extra={"turn_id": turn_id, "tool": name, "status": "error", "duration_ms": 0},
+            )
+            return json.dumps({"error": str(exc)}), None
         logger.info(
             "tool_call",
             extra={
@@ -100,6 +132,19 @@ def execute_tool_call(
             }),
             spec,
         )
+
+    if name == COMPOSE_RESPONSE_TOOL:
+        logger.info(
+            "tool_call",
+            extra={
+                "turn_id": turn_id,
+                "tool": name,
+                "tool_args": args,
+                "status": "ok",
+                "duration_ms": round((time.perf_counter() - start) * 1000, 1),
+            },
+        )
+        return json.dumps(args), None
 
     try:
         result = dispatch_fn(name, args)

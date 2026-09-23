@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CHART_DIMENSIONS, RETRO_COLORS, buildLinearDomainScale, chartInnerHeight } from './scales';
+import { CHART_DIMENSIONS, RETRO_COLORS, buildLinearDomainScale, chartInnerHeight, chartInnerWidth, formatChartValue } from './scales';
 
 interface ScatterPoint {
   x: number;
@@ -12,9 +12,11 @@ interface RetroScatterChartProps {
   color?: string;
   xUnit?: string;
   yUnit?: string;
+  xLabel?: string;
+  yLabel?: string;
 }
 
-export const RetroScatterChart: React.FC<RetroScatterChartProps> = ({ points, color, xUnit, yUnit }) => {
+export const RetroScatterChart: React.FC<RetroScatterChartProps> = ({ points, color, xUnit, yUnit, xLabel, yLabel }) => {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const { svgWidth, svgHeight, paddingLeft, paddingRight, paddingTop } = CHART_DIMENSIONS;
 
@@ -25,22 +27,21 @@ export const RetroScatterChart: React.FC<RetroScatterChartProps> = ({ points, co
   const dotColor = color || RETRO_COLORS[0];
 
   return (
-    <div className="relative w-full overflow-hidden select-none pt-2">
-      <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full h-48 sm:h-56 overflow-visible">
+    <div className="relative w-full overflow-x-auto select-none pt-2">
+      <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full min-w-[560px] h-auto overflow-visible" role="group" aria-label={`${yLabel || 'Y value'} by ${xLabel || 'X value'}`}>
         {/* Grid lines at quartile intervals */}
         {[0, 0.25, 0.5, 0.75, 1].map((frac) => {
           const y = paddingTop + chartInnerHeight * (1 - frac);
+          const value = yScale.invert(y);
+          const x = paddingLeft + chartInnerWidth * frac;
+          const xValue = xScale.invert(x);
           return (
-            <line
-              key={frac}
-              x1={paddingLeft}
-              y1={y}
-              x2={svgWidth - paddingRight}
-              y2={y}
-              stroke="#CBD5E1"
-              strokeWidth="1"
-              strokeDasharray="3 3"
-            />
+            <g key={frac}>
+              <line x1={paddingLeft} y1={y} x2={svgWidth - paddingRight} y2={y} stroke="#CBD5E1" strokeWidth="1" strokeDasharray="3 3" />
+              <text x={paddingLeft - 7} y={y + 3} textAnchor="end" className="font-arcade-mono text-[9px] fill-slate-500">{formatChartValue(value)}</text>
+              <line x1={x} y1={paddingTop} x2={x} y2={paddingTop + chartInnerHeight} stroke="#CBD5E1" strokeWidth="1" strokeDasharray="3 3" />
+              <text x={x} y={paddingTop + chartInnerHeight + 15} textAnchor="middle" className="font-arcade-mono text-[9px] fill-slate-500">{formatChartValue(xValue)}</text>
+            </g>
           );
         })}
 
@@ -65,8 +66,13 @@ export const RetroScatterChart: React.FC<RetroScatterChartProps> = ({ points, co
           <g
             key={idx}
             className="cursor-pointer"
+            tabIndex={0}
+            role="img"
+            aria-label={`${pt.label || `Point ${idx + 1}`}: ${formatChartValue(pt.x)} ${xUnit || ''}, ${formatChartValue(pt.y)} ${yUnit || ''}`}
             onMouseEnter={() => setHoveredIdx(idx)}
             onMouseLeave={() => setHoveredIdx(null)}
+            onFocus={() => setHoveredIdx(idx)}
+            onBlur={() => setHoveredIdx(null)}
           >
             <circle
               cx={xScale(pt.x)}
@@ -79,6 +85,8 @@ export const RetroScatterChart: React.FC<RetroScatterChartProps> = ({ points, co
             />
           </g>
         ))}
+        <text x={paddingLeft + chartInnerWidth / 2} y={svgHeight - 7} textAnchor="middle" className="font-arcade-mono text-[10px] fill-slate-600 font-bold">{xLabel || 'X value'}</text>
+        <text x="14" y={paddingTop + chartInnerHeight / 2} transform={`rotate(-90 14 ${paddingTop + chartInnerHeight / 2})`} textAnchor="middle" className="font-arcade-mono text-[10px] fill-slate-600 font-bold">{yLabel || 'Y value'}</text>
       </svg>
 
       {hoveredIdx !== null && (

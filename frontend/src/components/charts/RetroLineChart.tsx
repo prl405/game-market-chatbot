@@ -6,7 +6,10 @@ import {
   buildXPointScale,
   buildYScale,
   buildYTicks,
+  chartInnerWidth,
   chartInnerHeight,
+  chartLabelStride,
+  formatChartValue,
   niceMax,
 } from './scales';
 
@@ -15,9 +18,11 @@ interface RetroLineChartProps {
   values: number[];
   color?: string;
   unit?: string;
+  xLabel?: string;
+  yLabel?: string;
 }
 
-export const RetroLineChart: React.FC<RetroLineChartProps> = ({ labels, values, color, unit }) => {
+export const RetroLineChart: React.FC<RetroLineChartProps> = ({ labels, values, color, unit, xLabel, yLabel }) => {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const { svgWidth, svgHeight, paddingLeft, paddingRight, paddingTop } = CHART_DIMENSIONS;
 
@@ -38,8 +43,8 @@ export const RetroLineChart: React.FC<RetroLineChartProps> = ({ labels, values, 
   },${paddingTop + chartInnerHeight} Z`;
 
   return (
-    <div className="relative w-full overflow-hidden select-none pt-2">
-      <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full h-48 sm:h-56 overflow-visible">
+    <div className="relative w-full overflow-x-auto select-none pt-2">
+      <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full min-w-[560px] h-auto overflow-visible" role="group" aria-label={`${yLabel || 'Value'} over ${xLabel || 'category'}`}>
         {ticks.map((t, idx) => {
           const y = yScale(t);
           return (
@@ -59,7 +64,7 @@ export const RetroLineChart: React.FC<RetroLineChartProps> = ({ labels, values, 
                 textAnchor="end"
                 className="font-arcade-mono text-[9px] fill-slate-500 font-bold"
               >
-                {t}
+                {formatChartValue(t)}
               </text>
             </g>
           );
@@ -99,8 +104,13 @@ export const RetroLineChart: React.FC<RetroLineChartProps> = ({ labels, values, 
           <g
             key={idx}
             className="cursor-pointer"
+            tabIndex={0}
+            role="img"
+            aria-label={`${pt.label}: ${pt.val} ${unit || ''}`}
             onMouseEnter={() => setHoveredIdx(idx)}
             onMouseLeave={() => setHoveredIdx(null)}
+            onFocus={() => setHoveredIdx(idx)}
+            onBlur={() => setHoveredIdx(null)}
           >
             <rect
               x={pt.x - 5}
@@ -115,17 +125,20 @@ export const RetroLineChart: React.FC<RetroLineChartProps> = ({ labels, values, 
           </g>
         ))}
 
-        {labels.map((lbl, idx) => (
+        {labels.map((lbl, idx) => (idx % chartLabelStride(labels.length) === 0 || idx === labels.length - 1) && (
           <text
             key={idx}
             x={xScale(idx)}
-            y={paddingTop + chartInnerHeight + 16}
-            textAnchor="middle"
-            className="font-arcade-mono text-[9px] sm:text-[10px] fill-black font-bold uppercase"
+            y={paddingTop + chartInnerHeight + 15}
+            transform={`rotate(-42 ${xScale(idx)} ${paddingTop + chartInnerHeight + 15})`}
+            textAnchor="end"
+            className="font-arcade-mono text-[9px] fill-black font-bold"
           >
-            {lbl}
+            {lbl.length > 24 ? `${lbl.slice(0, 23)}…` : lbl}
           </text>
         ))}
+        <text x={paddingLeft + chartInnerWidth / 2} y={svgHeight - 7} textAnchor="middle" className="font-arcade-mono text-[10px] fill-slate-600 font-bold">{xLabel || 'Category'}</text>
+        <text x="14" y={paddingTop + chartInnerHeight / 2} transform={`rotate(-90 14 ${paddingTop + chartInnerHeight / 2})`} textAnchor="middle" className="font-arcade-mono text-[10px] fill-slate-600 font-bold">{yLabel || 'Value'}</text>
       </svg>
 
       {hoveredIdx !== null && (
@@ -138,7 +151,7 @@ export const RetroLineChart: React.FC<RetroLineChartProps> = ({ labels, values, 
         >
           <div className="text-[#FFD200]">{points[hoveredIdx].label}</div>
           <div>
-            {points[hoveredIdx].val} {unit || ''}
+            {formatChartValue(points[hoveredIdx].val)} {unit || ''}
           </div>
         </div>
       )}

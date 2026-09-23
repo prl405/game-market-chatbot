@@ -69,9 +69,16 @@ data:
 - x_field / y_field: keys in each data row to plot (for pie charts,
   x_field is the slice label and y_field is the slice value).
 - title: a short descriptive chart title.
-Call render_chart at most once per answer. The UI renders the chart next
-to your text, so do not restate every plotted value in prose. If the
-answer is a single number or a short fact, do NOT render a chart.
+Call render_chart for each useful visualization, keeping each chart below
+50 rows. Then call compose_response exactly once as the final tool call.
+Its blocks array is the complete answer in display order. Use markdown
+blocks for all prose and Markdown tables. Use chart blocks with chart_index
+to insert each previously queued chart (the first chart is index 0). You may
+alternate markdown and chart blocks, and may include multiple charts. Do not
+leave user-facing prose only in a tool-call message; put it in markdown
+blocks. Use GFM pipe tables only when a table makes comparisons clearer.
+If the answer is a single number or short fact, compose one markdown block
+and do not render a chart.
 
 ANSWER STYLE
 ------------

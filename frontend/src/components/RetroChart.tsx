@@ -31,11 +31,13 @@ export const RetroChart: React.FC<RetroChartProps> = ({ data: spec }) => {
         </span>
       </div>
 
-      {chart_type === 'bar' && <RetroBarChart labels={labels} values={values} />}
-      {chart_type === 'line' && <RetroLineChart labels={labels} values={values} />}
+      {chart_type === 'bar' && <RetroBarChart labels={labels} values={values} xLabel={x_field} yLabel={y_field} />}
+      {chart_type === 'line' && <RetroLineChart labels={labels} values={values} xLabel={x_field} yLabel={y_field} />}
       {chart_type === 'scatter' && (
         <RetroScatterChart
           points={data.map((row) => ({ x: Number(row[x_field] ?? 0), y: Number(row[y_field] ?? 0) }))}
+          xLabel={x_field}
+          yLabel={y_field}
         />
       )}
       {chart_type === 'pie' && (

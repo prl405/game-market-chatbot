@@ -36,6 +36,9 @@ export const RetroPieChart: React.FC<RetroPieChartProps> = ({ slices, unit }) =>
           {arcs.map((a, idx) => (
             <path
               key={idx}
+              tabIndex={0}
+              role="img"
+              aria-label={`${a.data.label}: ${a.data.value}`}
               d={arcGenerator(a) || undefined}
               fill={RETRO_COLORS[idx % RETRO_COLORS.length]}
               stroke="#000"
@@ -43,6 +46,8 @@ export const RetroPieChart: React.FC<RetroPieChartProps> = ({ slices, unit }) =>
               className="cursor-pointer transition-transform hover:brightness-110"
               onMouseEnter={() => setHoveredIdx(idx)}
               onMouseLeave={() => setHoveredIdx(null)}
+              onFocus={() => setHoveredIdx(idx)}
+              onBlur={() => setHoveredIdx(null)}
             />
           ))}
         </g>
@@ -54,18 +59,23 @@ export const RetroPieChart: React.FC<RetroPieChartProps> = ({ slices, unit }) =>
           return (
             <div
               key={idx}
-              className={`flex items-center gap-1.5 ${hoveredIdx === idx ? 'brightness-110' : ''}`}
+              tabIndex={0}
+              role="img"
+              aria-label={`${s.label}: ${s.value} ${unit || ''}, ${pct}%`}
+              className={`flex cursor-pointer items-center gap-1.5 ${hoveredIdx === idx ? 'brightness-110' : ''}`}
               onMouseEnter={() => setHoveredIdx(idx)}
               onMouseLeave={() => setHoveredIdx(null)}
+              onFocus={() => setHoveredIdx(idx)}
+              onBlur={() => setHoveredIdx(null)}
             >
               <div
                 className="w-3 h-3 border border-black shrink-0"
                 style={{ backgroundColor: RETRO_COLORS[idx % RETRO_COLORS.length] }}
               />
-              <span className="font-arcade-mono text-[11px] font-bold text-black uppercase truncate">
+              <span className="min-w-0 flex-1 break-words font-arcade-mono text-[11px] font-bold text-black uppercase">
                 {s.label}
               </span>
-              <span className="font-arcade-mono text-[11px] text-slate-500 ml-auto tabular-nums">
+              <span className="shrink-0 font-arcade-mono text-[11px] text-slate-500 tabular-nums">
                 {s.value} {unit || ''} ({pct}%)
               </span>
             </div>

@@ -30,4 +30,9 @@ def create_chat_response(request: ChatRequest) -> ChatResponse:
             detail="Chat request failed.",
         ) from exc
 
-    return ChatResponse(text=response.text, chart_spec=response.chart_spec)
+    blocks = response.blocks
+    if blocks is None:
+        blocks = ([{"type": "markdown", "content": response.text}] if response.text else [])
+        if response.chart_spec is not None:
+            blocks.append({"type": "chart", "chart": response.chart_spec})
+    return ChatResponse(text=response.text, chart_spec=response.chart_spec, blocks=blocks)

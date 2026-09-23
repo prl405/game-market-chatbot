@@ -39,6 +39,7 @@ Testing:
 from __future__ import annotations
 
 import logging
+import json
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -55,6 +56,7 @@ from game_market_chatbot.agent.tool_calls import (
     assistant_message_to_dict,
     execute_tool_call,
 )
+from game_market_chatbot.tools.chart_spec import COMPOSE_RESPONSE_TOOL
 from game_market_chatbot.tools.dispatch import TOOLS, dispatch
 
 logger = logging.getLogger(__name__)
@@ -81,6 +83,7 @@ class AgentResponse:
 
     text: str
     chart_spec: dict[str, Any] | None = None
+    blocks: list[dict[str, Any]] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -124,7 +127,9 @@ def chat(
         *messages,
     ]
 
-    chart_spec: dict[str, Any] | None = None
+    chart_specs: list[dict[str, Any]] = []
+    composed_blocks: list[dict[str, Any]] | None = None
+    composition_request: dict[str, Any] | None = None
     last_text = ""
 
     for round_num in range(MAX_TOOL_ROUNDS):
@@ -175,9 +180,48 @@ def chat(
 
         # No tool calls → this is the final answer.
         if not tool_calls:
+            text = message.content or last_text
+            if composition_request is not None:
+                try:
+                    requested_blocks = composition_request["blocks"]
+                    if not isinstance(requested_blocks, list):
+                        raise ValueError("Response blocks must be a list.")
+                    resolved: list[dict[str, Any]] = []
+                    for block in requested_blocks:
+                        if not isinstance(block, dict):
+                            raise ValueError("Response blocks must be objects.")
+                        if block.get("type") == "markdown" and isinstance(block.get("content"), str):
+                            resolved.append({"type": "markdown", "content": block["content"]})
+                        elif block.get("type") == "chart":
+                            chart_index = block.get("chart_index")
+                            if isinstance(chart_index, bool) or not isinstance(chart_index, int) or not 0 <= chart_index < len(chart_specs):
+                                raise ValueError("Chart block references an unavailable chart.")
+                            resolved.append({"type": "chart", "chart": chart_specs[chart_index]})
+                        else:
+                            raise ValueError("Unsupported response block.")
+                    composed_blocks = resolved
+                except (KeyError, TypeError, ValueError):
+                    composed_blocks = None
+            if composed_blocks is not None:
+                text = "\n\n".join(
+                    block["content"]
+                    for block in composed_blocks
+                    if block["type"] == "markdown"
+                )
+                return AgentResponse(
+                    text=text,
+                    chart_spec=next(
+                        (block["chart"] for block in composed_blocks if block["type"] == "chart"),
+                        None,
+                    ),
+                    blocks=composed_blocks,
+                )
+            fallback_blocks = ([{"type": "markdown", "content": text}] if text else [])
+            fallback_blocks.extend({"type": "chart", "chart": chart} for chart in chart_specs)
             return AgentResponse(
-                text=message.content or "",
-                chart_spec=chart_spec,
+                text=text,
+                chart_spec=chart_specs[0] if chart_specs else None,
+                blocks=fallback_blocks,
             )
 
         if message.content:
@@ -193,7 +237,12 @@ def chat(
                 logger=logger,
             )
             if spec is not None:
-                chart_spec = spec
+                chart_specs.append(spec)
+            if tool_call.function.name == COMPOSE_RESPONSE_TOOL:
+                try:
+                    composition_request = json.loads(result_content)
+                except json.JSONDecodeError:
+                    composition_request = None
             conversation.append({
                 "role": "tool",
                 "tool_call_id": tool_call.id,
@@ -207,5 +256,9 @@ def chat(
             "I wasn't able to finish researching that question — "
             "please try rephrasing it."
         ),
-        chart_spec=chart_spec,
+        chart_spec=chart_specs[0] if chart_specs else None,
+        blocks=composed_blocks or [
+            *([{"type": "markdown", "content": last_text}] if last_text else []),
+            *({"type": "chart", "chart": chart} for chart in chart_specs),
+        ],
     )

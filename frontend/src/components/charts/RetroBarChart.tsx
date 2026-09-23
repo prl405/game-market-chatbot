@@ -6,6 +6,9 @@ import {
   buildYScale,
   buildYTicks,
   chartInnerHeight,
+  chartInnerWidth,
+  chartLabelStride,
+  formatChartValue,
   niceMax,
 } from './scales';
 
@@ -14,9 +17,11 @@ interface RetroBarChartProps {
   values: number[];
   color?: string;
   unit?: string;
+  xLabel?: string;
+  yLabel?: string;
 }
 
-export const RetroBarChart: React.FC<RetroBarChartProps> = ({ labels, values, color, unit }) => {
+export const RetroBarChart: React.FC<RetroBarChartProps> = ({ labels, values, color, unit, xLabel, yLabel }) => {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const { svgWidth, svgHeight, paddingLeft, paddingRight, paddingTop } = CHART_DIMENSIONS;
 
@@ -27,9 +32,11 @@ export const RetroBarChart: React.FC<RetroBarChartProps> = ({ labels, values, co
   const barColor = color || RETRO_COLORS[0];
   const bandwidth = xScale.bandwidth();
 
+  const labelStride = chartLabelStride(labels.length);
+
   return (
-    <div className="relative w-full overflow-hidden select-none pt-2">
-      <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full h-48 sm:h-56 overflow-visible">
+    <div className="relative w-full overflow-x-auto select-none pt-2">
+      <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full min-w-[560px] h-auto overflow-visible" role="group" aria-label={`${yLabel || 'Value'} by ${xLabel || 'category'}`}>
         {ticks.map((t, idx) => {
           const y = yScale(t);
           return (
@@ -49,7 +56,7 @@ export const RetroBarChart: React.FC<RetroBarChartProps> = ({ labels, values, co
                 textAnchor="end"
                 className="font-arcade-mono text-[9px] fill-slate-500 font-bold"
               >
-                {t}
+                {formatChartValue(t)}
               </text>
             </g>
           );
@@ -74,7 +81,7 @@ export const RetroBarChart: React.FC<RetroBarChartProps> = ({ labels, values, co
 
         {labels.map((lbl, idx) => {
           const val = values[idx] ?? 0;
-          const x = xScale(lbl) ?? 0;
+          const x = xScale(String(idx)) ?? 0;
           const y = yScale(val);
           const height = paddingTop + chartInnerHeight - y;
           return (
@@ -82,6 +89,11 @@ export const RetroBarChart: React.FC<RetroBarChartProps> = ({ labels, values, co
               key={idx}
               onMouseEnter={() => setHoveredIdx(idx)}
               onMouseLeave={() => setHoveredIdx(null)}
+              onFocus={() => setHoveredIdx(idx)}
+              onBlur={() => setHoveredIdx(null)}
+              tabIndex={0}
+              role="img"
+              aria-label={`${lbl}: ${val} ${unit || ''}`}
               className="cursor-pointer"
             >
               <rect
@@ -94,30 +106,36 @@ export const RetroBarChart: React.FC<RetroBarChartProps> = ({ labels, values, co
                 strokeWidth="2"
                 className="transition-all duration-300 hover:brightness-110"
               />
-              <text
-                x={x + bandwidth / 2}
-                y={paddingTop + chartInnerHeight + 16}
-                textAnchor="middle"
-                className="font-arcade-mono text-[9px] sm:text-[10px] fill-black font-bold uppercase"
-              >
-                {lbl}
-              </text>
             </g>
           );
         })}
+        {labels.map((label, idx) => idx % labelStride === 0 || idx === labels.length - 1 ? (
+          <text
+            key={`label-${idx}`}
+            x={(xScale(String(idx)) ?? 0) + bandwidth / 2}
+            y={paddingTop + chartInnerHeight + 15}
+            transform={`rotate(-42 ${(xScale(String(idx)) ?? 0) + bandwidth / 2} ${paddingTop + chartInnerHeight + 15})`}
+            textAnchor="end"
+            className="font-arcade-mono text-[9px] fill-black font-bold"
+          >
+            {label.length > 24 ? `${label.slice(0, 23)}…` : label}
+          </text>
+        ) : null)}
+        <text x={paddingLeft + chartInnerWidth / 2} y={svgHeight - 7} textAnchor="middle" className="font-arcade-mono text-[10px] fill-slate-600 font-bold">{xLabel || 'Category'}</text>
+        <text x="14" y={paddingTop + chartInnerHeight / 2} transform={`rotate(-90 14 ${paddingTop + chartInnerHeight / 2})`} textAnchor="middle" className="font-arcade-mono text-[10px] fill-slate-600 font-bold">{yLabel || 'Value'}</text>
       </svg>
 
       {hoveredIdx !== null && (
         <div
           className="absolute z-20 pointer-events-none transform -translate-x-1/2 -translate-y-full -mt-2.5 bg-black text-white px-2 py-1 border-2 border-[#FFD200] font-arcade-mono text-[10px] font-bold tracking-wider retro-shadow-sm whitespace-nowrap"
           style={{
-            left: `${(((xScale(labels[hoveredIdx]) ?? 0) + bandwidth / 2) / svgWidth) * 100}%`,
+            left: `${(((xScale(String(hoveredIdx)) ?? 0) + bandwidth / 2) / svgWidth) * 100}%`,
             top: `${(yScale(values[hoveredIdx] ?? 0) / svgHeight) * 100}%`,
           }}
         >
           <div className="text-[#FFD200]">{labels[hoveredIdx]}</div>
           <div>
-            {values[hoveredIdx]} {unit || ''}
+            {formatChartValue(values[hoveredIdx] ?? 0)} {unit || ''}
           </div>
         </div>
       )}

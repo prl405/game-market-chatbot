@@ -10,13 +10,14 @@ from __future__ import annotations
 from typing import Any
 
 RENDER_CHART_TOOL = "render_chart"
+COMPOSE_RESPONSE_TOOL = "compose_response"
 
 _RENDER_CHART_DEFINITION: dict[str, Any] = {
     "type": "function",
     "function": {
         "name": RENDER_CHART_TOOL,
         "description": (
-            "Render a chart alongside your text answer. "
+            "Queue a chart that can be placed within your composed answer. "
             "Call this AFTER fetching data with another tool — pass the rows "
             "you want to plot (keep it under ~50 rows; aggregate or trim "
             "larger results first). The chart appears next to your reply, so "
@@ -62,6 +63,45 @@ _RENDER_CHART_DEFINITION: dict[str, Any] = {
                 },
             },
             "required": ["chart_type", "data", "x_field", "y_field", "title"],
+        },
+    },
+}
+
+_COMPOSE_RESPONSE_DEFINITION: dict[str, Any] = {
+    "type": "function",
+    "function": {
+        "name": COMPOSE_RESPONSE_TOOL,
+        "description": (
+            "Return the complete user-facing answer as ordered content blocks. "
+            "Use markdown blocks for prose and tables, and chart blocks to place "
+            "previously requested charts at the correct point in the answer."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "blocks": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "type": {"type": "string", "enum": ["markdown", "chart"]},
+                            "content": {
+                                "type": "string",
+                                "description": "Markdown text, required for markdown blocks.",
+                            },
+                            "chart_index": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "Queued chart index, required for chart blocks.",
+                            },
+                        },
+                        "required": ["type"],
+                        "additionalProperties": False,
+                    },
+                }
+            },
+            "required": ["blocks"],
+            "additionalProperties": False,
         },
     },
 }

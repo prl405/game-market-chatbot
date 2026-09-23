@@ -52,6 +52,12 @@ Open the Vite URL (normally `http://localhost:5173`). Set
 `API_CORS_ORIGINS` to a comma-separated list if the frontend uses a different
 origin. The API exposes `GET /health` and `POST /api/chat`.
 
+Assistant replies include an ordered `blocks` array. Markdown blocks contain
+prose or GFM tables; chart blocks contain a validated chart specification.
+This allows prose, tables, and multiple charts to appear in the intended
+sequence. The legacy `text` and `chart_spec` fields remain in the response for
+older clients; `chart_spec` contains only the first chart.
+
 ## Tests
 
 ```bash

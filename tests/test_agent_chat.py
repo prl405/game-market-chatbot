@@ -17,6 +17,8 @@ from unittest.mock import patch
 import pytest
 
 from game_market_chatbot.agent.chat import AgentResponse, chat
+from game_market_chatbot.tools.chart_spec import COMPOSE_RESPONSE_TOOL
+from game_market_chatbot.agent.tool_calls import normalise_chart_spec
 from game_market_chatbot.tools.dispatch import RENDER_CHART_TOOL, TOOLS, dispatch
 
 
@@ -193,6 +195,71 @@ def test_chart_spec_tolerates_json_string_data():
     assert response.chart_spec["chart_type"] == "pie"
 
 
+def test_compose_response_preserves_text_chart_text_order():
+    chart_args = {
+        "chart_type": "bar",
+        "data": [{"genre": "RPG", "copies": 12}],
+        "x_field": "genre",
+        "y_field": "copies",
+        "title": "Copies by genre",
+    }
+    second_chart = {
+        "chart_type": "line",
+        "data": [{"period": "2024", "copies": 12}],
+        "x_field": "period",
+        "y_field": "copies",
+        "title": "Copies over time",
+    }
+    blocks = [
+        {"type": "markdown", "content": "## Leading genre\n\nRPG leads."},
+        {"type": "chart", "chart_index": 0},
+        {"type": "markdown", "content": "| Genre | Copies |\n| --- | ---: |\n| RPG | 12 |"},
+        {"type": "chart", "chart_index": 1},
+        {"type": "markdown", "content": "Sales stayed level."},
+    ]
+    client = MockClient(script=[
+        _completion(tool_calls=[
+            _tool_call("chart", RENDER_CHART_TOOL, chart_args),
+            _tool_call("chart_2", RENDER_CHART_TOOL, second_chart),
+            _tool_call("compose", COMPOSE_RESPONSE_TOOL, {"blocks": blocks}),
+        ]),
+        _completion(content="Composed."),
+    ])
+
+    response = chat([{"role": "user", "content": "Compare genres"}], client=client)
+
+    assert response.blocks == [
+        blocks[0],
+        {"type": "chart", "chart": chart_args},
+        blocks[2],
+        {"type": "chart", "chart": second_chart},
+        blocks[4],
+    ]
+    assert response.chart_spec == chart_args
+    assert response.text == "\n\n".join(
+        block["content"] for block in (blocks[0], blocks[2], blocks[4])
+    )
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        [{"genre": "RPG", "copies": float("nan")}],
+        [{"genre": "RPG", "copies": "12"}],
+        [{"genre": "RPG"}],
+    ],
+)
+def test_chart_specs_reject_invalid_values(data):
+    with pytest.raises(ValueError):
+        normalise_chart_spec({
+            "chart_type": "bar",
+            "data": data,
+            "x_field": "genre",
+            "y_field": "copies",
+            "title": "Copies by genre",
+        })
+
+
 def test_tool_error_is_fed_back_and_recovered():
     """
     When a tool raises (e.g. invalid SQL), the error is returned to the
@@ -307,6 +374,7 @@ def test_render_chart_tool_is_registered_but_not_dispatchable():
     """
     names = [t["function"]["name"] for t in TOOLS]
     assert RENDER_CHART_TOOL in names
+    assert COMPOSE_RESPONSE_TOOL in names
 
     with pytest.raises(ValueError, match="Unknown tool"):
         dispatch(RENDER_CHART_TOOL, {})
