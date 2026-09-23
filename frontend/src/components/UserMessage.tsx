@@ -17,7 +17,7 @@ export const UserMessage: React.FC<UserMessageProps> = ({ message }) => {
         {/* Header: USER // Timestamp */}
         <div className="flex items-center justify-between font-arcade-mono font-bold text-s text-black tracking-wider mb-1.5 uppercase border-b-2 border-black pb-1.5">
           <span>{message.senderTitle}</span>
-          <span className="text-slate-500 font-medium">{message.timestamp}</span>
+          <span className="font-arcade-mono text-xs text-slate-500 font-medium">{message.timestamp}</span>
         </div>
         {/* Message body */}
         <p className="font-arcade-body text-sm sm:text-base leading-relaxed text-black font-medium whitespace-pre-wrap">

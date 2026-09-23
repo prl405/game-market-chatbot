@@ -249,7 +249,7 @@ export default function App() {
               className="flex items-center gap-1.5 h-8 px-2.5 bg-white hover:bg-[#FFD200] border-2 border-black font-arcade-mono text-xs font-bold uppercase retro-shadow-sm cursor-pointer"
             >
               <AlignJustify className="w-3.5 h-3.5 text-black" />
-              <span>SIDEBAR</span>
+              <span>CHATS</span>
             </button>
           </div>
         )}
@@ -257,7 +257,7 @@ export default function App() {
         {/* Scrollable messages area extending continuously to bottom of viewport */}
         <div
           ref={chatContainerRef}
-          className="flex-1 overflow-y-auto px-2 sm:px-6 pt-4 md:pt-6 pb-28 md:pb-32"
+          className="flex-1 overflow-y-auto px-2 sm:px-6 pt-10 md:pt-10 pb-28 md:pb-32"
         >
 
             {/* Messages list */}
