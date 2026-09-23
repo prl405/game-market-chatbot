@@ -10,33 +10,56 @@ interface PromptPresetsModalProps {
 const PRESETS = [
   {
     category: 'MARKET TELEMETRY',
-    title: 'RPG vs FPS Revenue Comparison',
-    prompt:
-      'Give me the latest revenue breakdown comparing RPG vs FPS global markets, and list the current engine market share for indie developers.',
+    title: 'Top 10 Games by Copies Sold',
+    prompt: 'What are the top 10 games by copies sold?',
   },
   {
-    category: 'GAMEPLAY MECHANICS',
-    title: 'Boss Raid Tactical Intel',
-    prompt:
-      'What is the optimal DPS rotation against Titan Mech in Phase 2, and what are the hitbox vulnerabilities?',
+    category: 'GENRE ANALYSIS',
+    title: 'Genre Share of Copies Sold',
+    prompt: 'What percentage share of total copies sold does each genre represent?',
   },
   {
-    category: 'SPEEDRUN & OPTIMIZATION',
-    title: 'Ledge-Cancel Frame Windows',
-    prompt:
-      'How do I optimize the frame input window on Sector 3 ledge-cancels to maintain maximum momentum?',
+    category: 'PRICING',
+    title: 'Games Priced at $9.99 or Below',
+    prompt: 'How many games are priced at $9.99 or below?',
   },
   {
-    category: 'PLOTS & CHARTS',
-    title: 'Plot 12-Month Player Retention (Line & Bar)',
-    prompt:
-      'Plot a line and bar chart showing 12-month player retention comparing 2024 actuals vs 2025 projected telemetry.',
+    category: 'PRICING',
+    title: 'Median Game Price',
+    prompt: 'What is the median price of games in the dataset?',
   },
   {
-    category: 'ECONOMY & METRICS',
-    title: 'Battle Pass Retention Analysis',
+    category: 'RELEASES',
+    title: 'Games Released in 2024',
+    prompt: 'How many games were released in 2024?',
+  },
+  {
+    category: 'REVIEWS',
+    title: 'Review Score Distribution',
     prompt:
-      'Analyze the day-30 retention curve differences between paid battle passes and loot-drop progression in live-service titles.',
+      'Give me the distribution of game review-scores on Steam.',
+  },
+  {
+    category: 'PUBLISHERS',
+    title: 'Top 10 Publishers by Game Count',
+    prompt: 'Which publishers have released the most games? Select the top 10 publishers.',
+  },
+  {
+    category: 'GENRE ANALYSIS',
+    title: 'Top 10 RPG Games by Copies Sold',
+    prompt: 'What are the top games in the RPG genre by copies sold? Select the top 10 games.',
+  },
+  {
+    category: 'MARKET COMPARISON',
+    title: 'Comparable Indie RPGs',
+    prompt:
+      'How many games are comparable to a $10-30 Indie RPG released between 2020 and 2024?',
+  },
+  {
+    category: 'SALES ANALYSIS',
+    title: '95th-Percentile Sales Outliers',
+    prompt:
+      'Which games are 95th-percentile outlier successes by copies sold? Select the top 10 games.',
   },
 ];
 
