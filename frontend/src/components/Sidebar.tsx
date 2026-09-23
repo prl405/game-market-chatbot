@@ -60,7 +60,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* + NEW GAME Button */}
           <button
             onClick={onNewGame}
-            className="w-full py-2.5 px-3 bg-[#2B66FF] hover:bg-[#2052D4] text-white font-arcade-mono font-bold text-sm tracking-wider uppercase border-2 border-black retro-shadow retro-shadow-active flex items-center justify-center gap-2 transition-all cursor-pointer"
+            className="w-full py-2.5 px-3 bg-[#2B66FF] hover:bg-[#2052D4] text-white font-arcade-mono font-bold text-sm tracking-wider uppercase border-2 border-black retro-shadow retro-shadow-active retro-button flex items-center justify-center gap-2 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
             <span>NEW CHAT</span>
@@ -80,10 +80,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 >
                   <button
                     onClick={() => onSelectSession(session.id)}
-                    className={`w-full text-left py-2.5 px-3 border-2 border-black font-arcade-mono font-bold text-xs uppercase flex items-center gap-2 transition-all cursor-pointer ${
+                    className={`w-full text-left py-2.5 px-3 border-2 border-black font-arcade-mono font-bold text-xs uppercase flex items-center gap-2 transition-all retro-button cursor-pointer ${
                       isActive
                         ? 'bg-[#FFD200] text-black retro-shadow'
-                        : 'bg-white text-black hover:bg-slate-100 hover:border-black'
+                        : 'bg-white text-black hover:bg-slate-100 hover:border-black retro-shadow-sm'
                     }`}
                   >
                     <History className="w-4 h-4 shrink-0 stroke-[2.5]" />
@@ -99,7 +99,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         onDeleteSession(session.id);
                       }}
                       title="Delete Run"
-                      className="absolute right-2 opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 border border-transparent hover:border-black transition-opacity"
+                      className="absolute right-2 opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 border border-transparent hover:border-black transition-opacity retro-button retro-shadow-sm"
                     >
                       <Trash2 className="w-3.5 h-3.5 text-red-600" />
                     </button>

@@ -52,7 +52,7 @@ export const InputDock: React.FC<InputDockProps> = ({
             if (onOpenPresets) onOpenPresets();
           }}
           title="Prompt Presets & Retro Macros"
-          className="w-10 h-10 border-2 border-black bg-white hover:bg-[#FFD200] flex items-center justify-center retro-shadow-sm retro-shadow-active shrink-0 transition-colors cursor-pointer"
+          className="w-10 h-10 border-2 border-black bg-white hover:bg-[#FFD200] flex items-center justify-center retro-shadow-sm retro-shadow-active retro-button shrink-0 transition-colors cursor-pointer"
         >
           <Sparkles className="w-4 h-4 text-black stroke-[2.5]" />
         </button>
@@ -76,7 +76,7 @@ export const InputDock: React.FC<InputDockProps> = ({
           type="button"
           onClick={handleSend}
           disabled={isLoading || !input.trim()}
-          className={`h-10 px-4 sm:px-5 border-2 border-black font-arcade-mono font-bold text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-1.5 retro-shadow retro-shadow-active shrink-0 transition-all cursor-pointer ${
+          className={`h-10 px-4 sm:px-5 border-2 border-black font-arcade-mono font-bold text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-1.5 retro-shadow retro-shadow-active retro-button shrink-0 transition-all cursor-pointer ${
             isLoading || !input.trim()
               ? 'bg-slate-200 text-slate-400 border-slate-400 cursor-not-allowed shadow-none'
               : 'bg-[#2B66FF] hover:bg-[#2052D4] text-white active:translate-x-0.5 active:translate-y-0.5'

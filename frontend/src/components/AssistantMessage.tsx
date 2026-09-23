@@ -53,7 +53,7 @@ export const AssistantMessage: React.FC<AssistantMessageProps> = ({ message }) =
             <button
               onClick={handleCopy}
               title="Copy response"
-              className="p-1 hover:bg-slate-100 border border-transparent hover:border-black transition-all cursor-pointer"
+              className="p-1 hover:bg-slate-100 border border-transparent hover:border-black transition-all retro-shadow-sm retro-button cursor-pointer"
             >
               {copied ? (
                 <Check className="w-3.5 h-3.5 text-emerald-600" />

@@ -310,7 +310,7 @@ export default function App() {
                 </p>
                 <button
                   onClick={() => setIsPresetsOpen(true)}
-                  className="px-4 py-2 bg-[#FFD200] hover:bg-yellow-400 font-arcade-mono font-bold text-xs uppercase border-2 border-black retro-shadow-sm cursor-pointer"
+                  className="px-4 py-2 bg-[#FFD200] hover:bg-yellow-400 font-arcade-mono font-bold text-xs uppercase border-2 border-black retro-shadow-sm retro-button cursor-pointer"
                 >
                   View Prompt Presets
                 </button>

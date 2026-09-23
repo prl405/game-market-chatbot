@@ -54,7 +54,7 @@ export const OutlinePanel: React.FC<OutlinePanelProps> = ({
           <button
             key={item.id}
             onClick={() => onItemClick(item)}
-            className="w-full text-left p-2 border-2 border-black bg-white hover:bg-[#FFD200] font-arcade-mono text-xs font-bold text-black uppercase transition-colors retro-shadow-sm retro-shadow-active flex items-center justify-between group cursor-pointer"
+            className="w-full text-left p-2 border-2 border-black bg-white hover:bg-[#FFD200] font-arcade-mono text-xs font-bold text-black uppercase transition-colors retro-shadow-sm retro-shadow-active retro-button flex items-center justify-between group cursor-pointer"
           >
             <span className="truncate">{item.title}</span>
             <ChevronRight className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 shrink-0" />
