@@ -7,6 +7,7 @@ interface OutlinePanelProps {
   onItemClick: (item: OutlineItem) => void;
   isOpen: boolean;
   onToggleOutline?: () => void;
+  onCloseMobile?: () => void;
 }
 
 export const OutlinePanel: React.FC<OutlinePanelProps> = ({
@@ -14,11 +15,17 @@ export const OutlinePanel: React.FC<OutlinePanelProps> = ({
   onItemClick,
   isOpen,
   onToggleOutline,
+  onCloseMobile,
 }) => {
   if (!isOpen) return null;
 
   return (
-    <aside className="w-56 bg-[#F8FAFC] border-l-2 border-black flex flex-col shrink-0 h-full select-none overflow-hidden">
+    <>
+      <div
+        onClick={onCloseMobile || onToggleOutline}
+        className="fixed inset-0 bg-black/40 z-30 md:hidden"
+      />
+      <aside className="fixed md:static inset-y-0 right-0 z-40 md:z-auto w-56 bg-[#F8FAFC] border-l-2 border-black flex flex-col shrink-0 h-full select-none overflow-hidden">
       {/* Outline header at top of panel */}
       <div className="h-14 border-b-2 border-black flex items-center justify-between px-4 bg-white shrink-0">
         {onToggleOutline && (
@@ -64,6 +71,7 @@ export const OutlinePanel: React.FC<OutlinePanelProps> = ({
       <div className="mt-auto p-3 border-t border-black bg-slate-100 text-[10px] font-arcade-mono text-slate-500">
         Click any section to jump directly to that telemetry stream.
       </div>
-    </aside>
+      </aside>
+    </>
   );
 };

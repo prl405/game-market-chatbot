@@ -73,6 +73,16 @@ export default function App() {
     scrollToBottom('auto');
   }, [activeSessionId]);
 
+  useEffect(() => {
+    const closeCompetingPanelOnSmallViewport = () => {
+      if (window.innerWidth < 768 && sidebarOpen) setOutlineOpen(false);
+    };
+
+    window.addEventListener('resize', closeCompetingPanelOnSmallViewport);
+    closeCompetingPanelOnSmallViewport();
+    return () => window.removeEventListener('resize', closeCompetingPanelOnSmallViewport);
+  }, [sidebarOpen]);
+
   const handleNewGame = () => {
     const newSession = createEmptySession(sessions.length + 1);
     setSessions((prev) => [newSession, ...prev]);
@@ -216,7 +226,11 @@ export default function App() {
         onNewGame={handleNewGame}
         onDeleteSession={handleDeleteSession}
         isOpen={sidebarOpen}
-        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+        onToggleSidebar={() => {
+          const nextOpen = !sidebarOpen;
+          if (nextOpen && window.innerWidth < 768) setOutlineOpen(false);
+          setSidebarOpen(nextOpen);
+        }}
         onCloseMobile={() => setSidebarOpen(false)}
       />
 
@@ -227,6 +241,7 @@ export default function App() {
           <div className="absolute top-3 right-4 z-10">
             <button
               onClick={() => {
+                if (window.innerWidth < 768) setSidebarOpen(false);
                 setOutlineOpen(true);
               }}
               title="Show Outline"
@@ -243,6 +258,7 @@ export default function App() {
           <div className="absolute top-3 left-3 sm:left-4 z-10">
             <button
               onClick={() => {
+                if (window.innerWidth < 768) setOutlineOpen(false);
                 setSidebarOpen(true);
               }}
               title="Show Sidebar"
@@ -322,6 +338,7 @@ export default function App() {
         onItemClick={handleOutlineClick}
         isOpen={outlineOpen}
         onToggleOutline={() => setOutlineOpen(false)}
+        onCloseMobile={() => setOutlineOpen(false)}
       />
 
       {/* Prompt Presets Modal */}
