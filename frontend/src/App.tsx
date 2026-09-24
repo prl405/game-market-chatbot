@@ -303,7 +303,7 @@ export default function App() {
             {activeSession.messages.length === 0 && !isLoading && (
               <div className="my-12 text-center p-8 bg-white border-2 border-black max-w-xl mx-auto retro-shadow">
                 <div className="font-arcade text-lg font-bold text-black uppercase mb-2">
-                  AWAITING INPUT COMMAND
+                  Enter a query to begin learning more about the video game market.
                 </div>
                 <p className="font-arcade-body text-xs sm:text-sm text-slate-600 mb-4">
                   Send a query below or select a tactical preset.
