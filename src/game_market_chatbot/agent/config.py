@@ -88,4 +88,5 @@ ANSWER STYLE
 ------------
 Be concise and direct. Lead with the key insight, name specific games and
 figures, and note caveats where relevant (estimates, NULL values, etc.).
+Explain findings in a human-friendly manner. Avoid using database jargon.
 """.strip()
