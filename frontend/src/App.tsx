@@ -117,7 +117,7 @@ export default function App() {
       id: `msg-u-${Date.now()}`,
       role: 'user',
       timestamp: timeStr,
-      senderTitle: `USER`,
+      senderTitle: `USER // PLAYER 1`,
       content: attachment
         ? `${text}\n[Attached File: ${attachment.name} (${attachment.size})]`
         : text,
@@ -292,7 +292,7 @@ export default function App() {
                   id: 'loading-preview',
                   role: 'assistant',
                   timestamp: 'NOW',
-                  senderTitle: 'PIXELBOT 64 // MARKET AI',
+                  senderTitle: 'PIXELBOT 64 // GAMEGAUGE AI',
                   content: 'Thinking\u2026',
                   status: 'streaming',
                 }}
