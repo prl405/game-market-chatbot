@@ -13,6 +13,7 @@ import { LineChart } from './charts/LineChart';
 import { ScatterChart } from './charts/ScatterChart';
 import { PieChart } from './charts/PieChart';
 import { HistogramChart } from './charts/HistogramChart';
+import { formatChartLabel } from './charts/scales';
 
 interface ChartRendererProps {
   data: ChartSpec;
@@ -21,8 +22,10 @@ interface ChartRendererProps {
 export const ChartRenderer: React.FC<ChartRendererProps> = ({ data: spec }) => {
   const { chart_type, data, x_field, y_field, title } = spec;
 
-  const labels = data.map((row) => String(row[x_field] ?? ''));
+  const labels = data.map((row) => formatChartLabel(String(row[x_field] ?? '')));
   const values = data.map((row) => Number(row[y_field] ?? 0));
+  const displayXField = formatChartLabel(x_field);
+  const displayYField = formatChartLabel(y_field);
 
   return (
     <div className="my-5 border-2 border-black bg-[#FAFBFD] p-3 sm:p-4 retro-shadow-sm">
@@ -32,17 +35,17 @@ export const ChartRenderer: React.FC<ChartRendererProps> = ({ data: spec }) => {
         </span>
       </div>
 
-      {chart_type === 'bar' && <BarChart labels={labels} values={values} xLabel={x_field} yLabel={y_field} />}
-      {chart_type === 'line' && <LineChart labels={labels} values={values} xLabel={x_field} yLabel={y_field} />}
+      {chart_type === 'bar' && <BarChart labels={labels} values={values} xLabel={displayXField} yLabel={displayYField} />}
+      {chart_type === 'line' && <LineChart labels={labels} values={values} xLabel={displayXField} yLabel={displayYField} />}
       {chart_type === 'scatter' && (
         <ScatterChart
           points={data.map((row) => ({ x: Number(row[x_field] ?? 0), y: Number(row[y_field] ?? 0) }))}
-          xLabel={x_field}
-          yLabel={y_field}
+          xLabel={displayXField}
+          yLabel={displayYField}
         />
       )}
       {chart_type === 'pie' && (
-        <PieChart slices={data.map((row) => ({ label: String(row[x_field] ?? ''), value: Number(row[y_field] ?? 0) }))} />
+        <PieChart slices={data.map((row) => ({ label: formatChartLabel(String(row[x_field] ?? '')), value: Number(row[y_field] ?? 0) }))} />
       )}
       {chart_type === 'histogram' && spec.x_end_field && (
         <HistogramChart
@@ -51,14 +54,14 @@ export const ChartRenderer: React.FC<ChartRendererProps> = ({ data: spec }) => {
             end: Number(row[spec.x_end_field!]),
             count: Number(row[y_field]),
           }))}
-          xLabel={x_field}
-          yLabel={y_field}
+          xLabel={displayXField}
+          yLabel={displayYField}
         />
       )}
 
       <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-300 flex-wrap gap-2">
         <div className="font-arcade-mono text-[10px] text-slate-500 italic">
-          X: {x_field} &nbsp;/&nbsp; Y: {y_field}
+          X: {displayXField} &nbsp;/&nbsp; Y: {displayYField}
         </div>
       </div>
     </div>

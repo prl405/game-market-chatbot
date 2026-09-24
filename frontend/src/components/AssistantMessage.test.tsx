@@ -2,7 +2,9 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { Message } from '../types';
 import { AssistantMessage } from './AssistantMessage';
+import { ChartRenderer } from './ChartSpecRenderer';
 import { parseResponseBlocks } from '../services/llmClient';
+import type { ChartSpec } from '../types';
 
 const message = (contentBlocks: NonNullable<Message['contentBlocks']>): Message => ({
   id: 'assistant-test',
@@ -40,7 +42,7 @@ describe('AssistantMessage mixed content', () => {
     expect(container.querySelector('td')?.className).toContain('border-black');
     expect(screen.getAllByText('RPG').length).toBeGreaterThan(0);
     expect(screen.getByText('Copies by genre')).toBeTruthy();
-    expect(screen.getByRole('group', { name: 'copies by genre' })).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Copies by Genre' })).toBeTruthy();
     expect(screen.getByRole('img', { name: 'RPG: 12' })).toBeTruthy();
     const text = container.textContent ?? '';
     expect(text.indexOf('Before the chart.')).toBeLessThan(text.indexOf('Copies by genre'));
@@ -81,9 +83,9 @@ describe('AssistantMessage mixed content', () => {
       },
     ])} />);
 
-    expect(screen.getByRole('group', { name: 'count by bin_start range' })).toBeTruthy();
-    expect(screen.getByRole('img', { name: '0 to 5: 3 count' })).toBeTruthy();
-    expect(screen.getByRole('img', { name: '5 to 10: 7 count' })).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Count by Bin Start range' })).toBeTruthy();
+    expect(screen.getByRole('img', { name: '0 to 5: 3 Count' })).toBeTruthy();
+    expect(screen.getByRole('img', { name: '5 to 10: 7 Count' })).toBeTruthy();
   });
 
   it('rejects overlapping histogram intervals with the readable fallback', () => {
@@ -105,5 +107,54 @@ describe('AssistantMessage mixed content', () => {
     ], '', null)).toEqual([
       { type: 'markdown', content: 'Chart unavailable: the chart data was invalid.' },
     ]);
+  });
+});
+
+describe('ChartRenderer labels', () => {
+  it.each([
+    {
+      chart_type: 'bar',
+      data: [{ release_type: 'role_playing', total_copies_sold: 12 }],
+      x_field: 'release_type',
+      y_field: 'total_copies_sold',
+    },
+    {
+      chart_type: 'line',
+      data: [{ release_type: 'role_playing', total_copies_sold: 12 }],
+      x_field: 'release_type',
+      y_field: 'total_copies_sold',
+    },
+    {
+      chart_type: 'scatter',
+      data: [{ average_price: 20, total_copies_sold: 12 }],
+      x_field: 'average_price',
+      y_field: 'total_copies_sold',
+    },
+    {
+      chart_type: 'pie',
+      data: [{ release_type: 'role_playing', total_copies_sold: 12 }],
+      x_field: 'release_type',
+      y_field: 'total_copies_sold',
+    },
+    {
+      chart_type: 'histogram',
+      data: [{ bin_start: 0, bin_end: 5, count: 3 }],
+      x_field: 'bin_start',
+      x_end_field: 'bin_end',
+      y_field: 'count',
+    },
+  ] satisfies ChartSpec[])('formats $chart_type field names for display', (chart) => {
+    const { container } = render(
+      <ChartRenderer data={{ ...chart, title: 'Chart title' }} />,
+    );
+    const renderedText = container.textContent ?? '';
+
+    expect(renderedText).not.toMatch(/\w_\w/);
+    expect(renderedText).toContain(chart.chart_type === 'histogram' ? 'Bin Start' :
+      chart.chart_type === 'scatter' ? 'Average Price' : 'Release Type');
+    expect(renderedText).toContain(chart.chart_type === 'histogram' ? 'Count' : 'Total Copies Sold');
+    if (chart.chart_type === 'bar' || chart.chart_type === 'line' || chart.chart_type === 'pie') {
+      expect(renderedText).toContain('Role Playing');
+    }
   });
 });

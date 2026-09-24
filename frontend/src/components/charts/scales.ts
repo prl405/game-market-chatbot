@@ -49,6 +49,14 @@ export function formatChartValue(value: number): string {
   }).format(value);
 }
 
+export function formatChartLabel(value: string): string {
+  return value
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
+}
+
 export function chartLabelStride(count: number): number {
   return Math.max(1, Math.ceil(count / 12));
 }
