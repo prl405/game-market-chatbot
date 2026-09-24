@@ -81,7 +81,6 @@ export const ScatterChart: React.FC<ScatterChartProps> = ({ points, color, xUnit
               fill={dotColor}
               stroke="#000"
               strokeWidth="2"
-              className="transition-transform hover:scale-125"
             />
           </g>
         ))}

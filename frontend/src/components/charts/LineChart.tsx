@@ -120,7 +120,6 @@ export const LineChart: React.FC<LineChartProps> = ({ labels, values, color, uni
               fill={strokeColor}
               stroke="#000000"
               strokeWidth="2"
-              className="transition-transform hover:scale-125"
             />
           </g>
         ))}
