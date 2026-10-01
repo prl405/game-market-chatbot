@@ -17,6 +17,8 @@ from unittest.mock import patch
 import pytest
 
 from game_market_chatbot.agent.chat import AgentResponse, chat
+from game_market_chatbot.tools.chart_spec import COMPOSE_RESPONSE_TOOL
+from game_market_chatbot.agent.tool_calls import normalise_chart_spec
 from game_market_chatbot.tools.dispatch import RENDER_CHART_TOOL, TOOLS, dispatch
 
 
@@ -172,6 +174,61 @@ def test_render_chart_is_captured_not_dispatched():
     )
 
 
+@pytest.mark.parametrize(("row_count", "expected_bins"), [(100, 10), (1000, 20)])
+def test_histogram_uses_prior_query_values_and_adaptive_bins(row_count, expected_bins):
+    rows = [{"score": value} for value in range(row_count)]
+    client = MockClient(script=[
+        _completion(tool_calls=[_tool_call("query_1", "run_sql_query", {"sql": "SELECT score"})]),
+        _completion(tool_calls=[_tool_call("chart_1", RENDER_CHART_TOOL, {
+            "chart_type": "histogram",
+            "source_call_id": "query_1",
+            "value_field": "score",
+            "title": "Score distribution",
+        })]),
+        _completion(content="The scores are distributed across these bins."),
+    ])
+
+    with patch("game_market_chatbot.agent.chat.dispatch", return_value=rows):
+        response = chat([{"role": "user", "content": "Show score distribution"}], client=client)
+
+    spec = response.chart_spec
+    assert spec["chart_type"] == "histogram"
+    assert len(spec["data"]) == expected_bins
+    assert sum(row["count"] for row in spec["data"]) == row_count
+    assert spec["x_field"] == "bin_start"
+    assert spec["x_end_field"] == "bin_end"
+    assert spec["y_field"] == "count"
+
+
+def test_histogram_rejects_missing_or_non_numeric_source_values():
+    args = {
+        "chart_type": "histogram",
+        "source_call_id": "query_1",
+        "value_field": "score",
+        "title": "Score distribution",
+    }
+    with pytest.raises(ValueError, match="earlier query result"):
+        normalise_chart_spec(args, {"other_query": [{"score": 1}]})
+    with pytest.raises(ValueError, match="no finite numeric values"):
+        normalise_chart_spec(args, {"query_1": [{"score": True}, {"score": "2"}]})
+
+
+def test_histogram_constant_values_produce_one_nonzero_width_bin():
+    spec = normalise_chart_spec(
+        {
+            "chart_type": "histogram",
+            "source_call_id": "query_1",
+            "value_field": "score",
+            "title": "Constant scores",
+        },
+        {"query_1": [{"score": 5}] * 100},
+    )
+
+    assert len(spec["data"]) == 1
+    assert spec["data"][0]["bin_start"] < 5 < spec["data"][0]["bin_end"]
+    assert spec["data"][0]["count"] == 100
+
+
 def test_chart_spec_tolerates_json_string_data():
     """data passed as a JSON string (instead of a list) is parsed."""
     chart_args = {
@@ -191,6 +248,71 @@ def test_chart_spec_tolerates_json_string_data():
 
     assert response.chart_spec["data"] == [{"publisher_class": "Indie", "game_count": 5}]
     assert response.chart_spec["chart_type"] == "pie"
+
+
+def test_compose_response_preserves_text_chart_text_order():
+    chart_args = {
+        "chart_type": "bar",
+        "data": [{"genre": "RPG", "copies": 12}],
+        "x_field": "genre",
+        "y_field": "copies",
+        "title": "Copies by genre",
+    }
+    second_chart = {
+        "chart_type": "line",
+        "data": [{"period": "2024", "copies": 12}],
+        "x_field": "period",
+        "y_field": "copies",
+        "title": "Copies over time",
+    }
+    blocks = [
+        {"type": "markdown", "content": "## Leading genre\n\nRPG leads."},
+        {"type": "chart", "chart_index": 0},
+        {"type": "markdown", "content": "| Genre | Copies |\n| --- | ---: |\n| RPG | 12 |"},
+        {"type": "chart", "chart_index": 1},
+        {"type": "markdown", "content": "Sales stayed level."},
+    ]
+    client = MockClient(script=[
+        _completion(tool_calls=[
+            _tool_call("chart", RENDER_CHART_TOOL, chart_args),
+            _tool_call("chart_2", RENDER_CHART_TOOL, second_chart),
+            _tool_call("compose", COMPOSE_RESPONSE_TOOL, {"blocks": blocks}),
+        ]),
+        _completion(content="Composed."),
+    ])
+
+    response = chat([{"role": "user", "content": "Compare genres"}], client=client)
+
+    assert response.blocks == [
+        blocks[0],
+        {"type": "chart", "chart": chart_args},
+        blocks[2],
+        {"type": "chart", "chart": second_chart},
+        blocks[4],
+    ]
+    assert response.chart_spec == chart_args
+    assert response.text == "\n\n".join(
+        block["content"] for block in (blocks[0], blocks[2], blocks[4])
+    )
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        [{"genre": "RPG", "copies": float("nan")}],
+        [{"genre": "RPG", "copies": "12"}],
+        [{"genre": "RPG"}],
+    ],
+)
+def test_chart_specs_reject_invalid_values(data):
+    with pytest.raises(ValueError):
+        normalise_chart_spec({
+            "chart_type": "bar",
+            "data": data,
+            "x_field": "genre",
+            "y_field": "copies",
+            "title": "Copies by genre",
+        })
 
 
 def test_tool_error_is_fed_back_and_recovered():
@@ -307,6 +429,7 @@ def test_render_chart_tool_is_registered_but_not_dispatchable():
     """
     names = [t["function"]["name"] for t in TOOLS]
     assert RENDER_CHART_TOOL in names
+    assert COMPOSE_RESPONSE_TOOL in names
 
     with pytest.raises(ValueError, match="Unknown tool"):
         dispatch(RENDER_CHART_TOOL, {})
@@ -317,9 +440,10 @@ def test_render_chart_tool_schema_has_required_fields():
         t for t in TOOLS if t["function"]["name"] == RENDER_CHART_TOOL
     )
     params = definition["function"]["parameters"]
-    assert set(params["required"]) == {
-        "chart_type", "data", "x_field", "y_field", "title",
-    }
+    assert set(params["required"]) == {"chart_type", "title"}
+    assert {"data", "x_field", "y_field", "source_call_id", "value_field"}.issubset(
+        params["properties"]
+    )
     assert params["properties"]["chart_type"]["enum"] == [
-        "bar", "line", "scatter", "pie",
+        "bar", "line", "scatter", "pie", "histogram",
     ]

@@ -18,7 +18,12 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from game_market_chatbot.tools.chart_spec import RENDER_CHART_TOOL, _RENDER_CHART_DEFINITION
+from game_market_chatbot.tools.chart_spec import (
+    COMPOSE_RESPONSE_TOOL,
+    RENDER_CHART_TOOL,
+    _COMPOSE_RESPONSE_DEFINITION,
+    _RENDER_CHART_DEFINITION,
+)
 from game_market_chatbot.tools.query_market import (
     get_genre_market_share,
     get_publisher_class_breakdown,
@@ -31,7 +36,11 @@ from game_market_chatbot.tools.tool_specs import TOOLS as _PREDEFINED_TOOLS
 
 # render_chart travels with the rest of TOOLS so the model can call it, but
 # it is deliberately absent from _FUNCTION_MAP — see chart_spec.py.
-TOOLS: list[dict[str, Any]] = [*_PREDEFINED_TOOLS, _RENDER_CHART_DEFINITION]
+TOOLS: list[dict[str, Any]] = [
+    *_PREDEFINED_TOOLS,
+    _RENDER_CHART_DEFINITION,
+    _COMPOSE_RESPONSE_DEFINITION,
+]
 
 _FUNCTION_MAP = {
     "get_top_games_by_copies_sold":  get_top_games_by_copies_sold,

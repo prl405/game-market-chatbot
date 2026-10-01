@@ -8,7 +8,7 @@ a rotating file at logs/app.log.
 Usage:
     from game_market_chatbot.observability import configure_logging
 
-    configure_logging()  # call once at process start (CLI / Streamlit entry)
+    configure_logging()  # call once at process start
 """
 
 from __future__ import annotations
@@ -48,8 +48,7 @@ def configure_logging(level: str | None = None) -> None:
     """
     Configure root logging with JSON output to stdout and logs/app.log.
 
-    Idempotent — safe to call repeatedly (e.g. on Streamlit reruns) without
-    installing duplicate handlers.
+    Idempotent — safe to call repeatedly without installing duplicate handlers.
     """
     root = logging.getLogger()
     if getattr(root, "_game_market_chatbot_configured", False):

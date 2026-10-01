@@ -27,33 +27,33 @@ class EvalCase:
 CASES: list[EvalCase] = [
     EvalCase(
         id="top_10_by_copies_sold",
-        question="What are the top 10 games by copies sold? Write them as text.",
+        question="What are the top 10 games by copies sold? Write them as non-tabular, bold, or italic text.",
         answer_type="id_set",
     ),
     EvalCase(
         id="genre_market_share",
         question=(
             "What percentage share of total copies sold does each genre "
-            "represent? Write them as text."
+            "represent? Write them as non-tabular, bold, or italic text."
         ),
         answer_type="percent_table",
         tolerance=2.0,  # percentage points
     ),
     EvalCase(
         id="games_priced_le_9_99",
-        question="How many games are priced at $9.99 or below? Write the answer as text.",
+        question="How many games are priced at $9.99 or below? Write the answer as non-tabular, bold, or italic text.",
         answer_type="number",
         tolerance=0,
     ),
     EvalCase(
         id="median_price",
-        question="What is the median price of games in the dataset? Write the answer as text.",
+        question="What is the median price of games in the dataset? Write the answer as non-tabular, bold, or italic text.",
         answer_type="number",
         tolerance=0.5,
     ),
     EvalCase(
         id="games_released_2024",
-        question="How many games were released in 2024? Write the answer as text.",
+        question="How many games were released in 2024? Write the answer as non-tabular, bold, or italic text.",
         answer_type="number",
         tolerance=0,
     ),
@@ -61,27 +61,27 @@ CASES: list[EvalCase] = [
         id="review_score_distribution",
         question=(
             "Give me the distribution of games across review-score bands "
-            "(0-9, 10-19, ..., 90-100), with the game count in each band. Write the answer as text."
+            "(0-9, 10-19, ..., 90-100), with the game count in each band. Write the answer as non-tabular, bold, or italic text."
         ),
         answer_type="count_table",
         tolerance=5,  # game-count tolerance per bucket
     ),
     EvalCase(
         id="top_publishers_by_game_count",
-        question="Which publishers have released the most games? Write the answer as text.",
+        question="Which publishers have released the most games? Select the top 10 publishers. Write the answer as non-tabular, bold, or italic text.",
         answer_type="publisher_table",
         similarity_threshold=0.6,
     ),
     EvalCase(
         id="top_games_in_rpg_genre",
-        question="What are the top games in the RPG genre by copies sold? Write them as text.",
+        question="What are the top games in the RPG genre by copies sold? Select the top 10 games. Write them as non-tabular, bold, or italic text.",
         answer_type="id_set",
     ),
     EvalCase(
         id="comparable_games_count",
         question=(
             "How many games are comparable to a $10-30 Indie RPG released "
-            "between 2020 and 2024? Write the answer as text."
+            "between 2020 and 2024? Write the answer as non-tabular, bold, or italic text."
         ),
         answer_type="number",
         tolerance=0,
@@ -90,7 +90,7 @@ CASES: list[EvalCase] = [
         id="percentile_95_outliers",
         question=(
             "Which games are 95th-percentile outlier successes by copies "
-            "sold? Write them as text."
+            "sold? Select the top 10 games. Write them as non-tabular, bold, or italic text."
         ),
         answer_type="id_set",
         similarity_threshold=0.5,  # long list — partial overlap is acceptable

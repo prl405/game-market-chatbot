@@ -204,7 +204,7 @@ def percentile_outliers(conn, percentile: float = 95.0) -> tuple[float, list[str
     threshold = cutpoints[int(percentile) - 1]
 
     cur.execute(
-        "SELECT name FROM steam_games WHERE copies_sold >= ?",
+        "SELECT name FROM steam_games WHERE copies_sold >= ? ORDER BY copies_sold DESC LIMIT 10",
         (threshold,),
     )
     names = [row[0] for row in cur.fetchall()]

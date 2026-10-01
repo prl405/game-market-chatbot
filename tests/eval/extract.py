@@ -13,7 +13,7 @@ from typing import Any
 
 _NUMBER_RE = re.compile(r"-?\d[\d,]*\.?\d*")
 _PERCENT_PAIR_RE = re.compile(r"([A-Za-z][A-Za-z \-]*?)\D{0,10}?(\d+(?:\.\d+)?)\s*%")
-_COUNT_PAIR_RE = re.compile(r"(\d{1,3}-\d{1,3})\D{0,15}?([\d,]+)\s*(?:games?)?")
+_COUNT_PAIR_RE = re.compile(r"(\d{1,3}[-–]\d{1,3})\D{0,15}?([\d,]+)\s*(?:games?)?")
 
 
 @dataclass

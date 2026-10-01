@@ -30,7 +30,9 @@ from game_market_chatbot.tools.query_sales import (
     get_games_by_price_range,
     get_top_games_by_copies_sold,
 )
+from game_market_chatbot.tools.chart_spec import COMPOSE_RESPONSE_TOOL
 from game_market_chatbot.tools.dispatch import RENDER_CHART_TOOL, TOOLS, dispatch
+from game_market_chatbot.tools.sql_fallback import run_sql_query
 
 
 # ---------------------------------------------------------------------------
@@ -490,6 +492,8 @@ class TestToolsRegistry:
             "run_sql_query",
             # UI-handled tool (Task 6): no backing function by design.
             RENDER_CHART_TOOL,
+            # Captured by the agent to define ordered frontend content.
+            COMPOSE_RESPONSE_TOOL,
         }
         assert names == expected
 
@@ -511,11 +515,30 @@ class TestToolsRegistry:
         from game_market_chatbot.tools.dispatch import _FUNCTION_MAP
         for tool in TOOLS:
             name = tool["function"]["name"]
-            # render_chart is executed by the UI layer, not dispatched here.
-            if name == RENDER_CHART_TOOL:
+            # These tools are captured by the agent, not the query dispatcher.
+            if name in {RENDER_CHART_TOOL, COMPOSE_RESPONSE_TOOL}:
                 continue
             assert name in _FUNCTION_MAP, \
                 f"Tool '{name}' has no matching function in _FUNCTION_MAP"
+
+
+def test_sql_query_rejects_explicit_limits_over_1000_rows():
+    class Cursor:
+        description = [("value",)]
+
+        def execute(self, _sql):
+            pass
+
+        def fetchmany(self, size):
+            assert size == 1001
+            return [(value,) for value in range(size)]
+
+    class Connection:
+        def cursor(self):
+            return Cursor()
+
+    with pytest.raises(ValueError, match="cannot exceed 1000 rows"):
+        run_sql_query("SELECT value LIMIT 5000", conn=Connection())
 
 
 # ---------------------------------------------------------------------------
