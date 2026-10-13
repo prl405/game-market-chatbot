@@ -28,3 +28,8 @@ build-backend = "uv_build"
 dev = [
     "pytest>=9.1.1",
 ]
+
+[tool.pytest.ini_options]
+# Routine runs cover deterministic suites only. Live-LLM evaluations in
+# tests/eval are opt-in: run them by path with RUN_LLM_EVAL=1.
+testpaths = ["tests/unit", "tests/integration"]

@@ -143,7 +143,7 @@ describe('ChartRenderer labels', () => {
       x_end_field: 'bin_end',
       y_field: 'count',
     },
-  ] satisfies ChartSpec[])('formats $chart_type field names for display', (chart) => {
+  ] satisfies Omit<ChartSpec, 'title'>[])('formats $chart_type field names for display', (chart) => {
     const { container } = render(
       <ChartRenderer data={{ ...chart, title: 'Chart title' }} />,
     );

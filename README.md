@@ -57,24 +57,40 @@ Open the Vite URL printed in the terminal (normally `http://localhost:5173`). Th
 
 ## Tests
 
-Run the regular Python test suite from the repository root:
+### Test layout
+
+```text
+tests/
+  conftest.py       # fixtures shared across suites (seeded in-memory database)
+  unit/             # isolated, mocked tests, organised by source module
+    agent/ api/ db/ ingestion/ tools/
+  integration/      # HTTP-boundary (FastAPI) and SQL-against-a-database tests
+  eval/             # opt-in live LLM evaluations (not part of routine runs)
+frontend/src/       # Vitest tests are co-located with the code they test
+                    # (components/*.test.tsx, components/charts/*, services/*)
+```
+
+### Routine checks
+
+These are deterministic: no network access, credentials, or populated database are needed.
 
 ```bash
+# Backend, from the repository root (runs tests/unit and tests/integration)
 uv run pytest
-```
+uv run pytest tests/unit/tools        # a single suite while iterating
 
-The live LLM evaluation tests are excluded from the regular suite. They make real OpenRouter requests against the local database and are non-deterministic. **Warning: the evaluation runs 10 questions through the agent and can consume a high number of API tokens.** Only run it when you intend to incur that usage, and make sure the database has been ingested and `OPENROUTER_API_KEY` is configured:
-
-```bash
-RUN_LLM_EVAL=1 uv run pytest tests/eval/test_answer_quality.py -v
-```
-
-Frontend checks can be run from `frontend/`:
-
-```bash
+# Frontend, from frontend/
 npm test
 npm run lint
 npm run build
+```
+
+### Live LLM evaluation (opt-in)
+
+The evaluation in `tests/eval` is excluded from `uv run pytest`. It makes real OpenRouter requests against the local database and is non-deterministic. **Warning: it runs 10 questions through the agent, needs network access, and can consume a high number of API tokens.** Only run it when you intend to incur that usage, and make sure the database has been ingested and `OPENROUTER_API_KEY` is configured:
+
+```bash
+RUN_LLM_EVAL=1 uv run pytest tests/eval/test_answer_quality.py -v
 ```
 
 ## Project structure
@@ -85,7 +101,8 @@ npm run build
 - `src/game_market_chatbot/ingestion`: Gamalytics data ingestion
 - `src/game_market_chatbot/tools`: Market queries and chart-spec tools
 - `frontend/`: React chat interface and chart rendering
-- `tests/`: Python tests, including the opt-in live LLM evaluations
+- `tests/unit`, `tests/integration`: deterministic Python tests (shared fixtures in `tests/conftest.py`)
+- `tests/eval`: opt-in live LLM evaluations, excluded from `uv run pytest`
 
 ## Data source and project use
 

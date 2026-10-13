@@ -1,11 +1,9 @@
 """
-Unit tests for src/game_market_chatbot/agent/chat.py and the render_chart
-tool definition in tools/registry.py.
+Unit tests for the chat loop in src/game_market_chatbot/agent/chat.py.
 
-The OpenRouter API is fully mocked — no network calls are made. The mock
-client mimics the OpenAI chat completions response shape
-(choices → message with .content and .tool_calls) and plays back a script
-of canned responses, one per API call.
+Chart-spec normalisation is covered in tests/unit/tools/test_chart_spec.py and
+tool-call serialization/execution in test_tool_calls.py. The OpenRouter API is
+fully mocked, so no network calls are made.
 """
 
 from __future__ import annotations
@@ -14,12 +12,9 @@ import json
 from types import SimpleNamespace
 from unittest.mock import patch
 
-import pytest
-
 from game_market_chatbot.agent.chat import AgentResponse, chat
 from game_market_chatbot.tools.chart_spec import COMPOSE_RESPONSE_TOOL
-from game_market_chatbot.agent.tool_calls import normalise_chart_spec
-from game_market_chatbot.tools.dispatch import RENDER_CHART_TOOL, TOOLS, dispatch
+from game_market_chatbot.tools.dispatch import RENDER_CHART_TOOL
 
 
 # ---------------------------------------------------------------------------
@@ -129,7 +124,6 @@ def test_text_only_answer_without_tools():
     mock_dispatch.assert_not_called()
     assert len(client.completions.calls) == 1
 
-
 def test_render_chart_is_captured_not_dispatched():
     """
     render_chart must not go through dispatch() — its arguments are captured
@@ -172,83 +166,6 @@ def test_render_chart_is_captured_not_dispatched():
         m["tool_call_id"] == "call_2" and "ok" in m["content"]
         for m in tool_messages
     )
-
-
-@pytest.mark.parametrize(("row_count", "expected_bins"), [(100, 10), (1000, 20)])
-def test_histogram_uses_prior_query_values_and_adaptive_bins(row_count, expected_bins):
-    rows = [{"score": value} for value in range(row_count)]
-    client = MockClient(script=[
-        _completion(tool_calls=[_tool_call("query_1", "run_sql_query", {"sql": "SELECT score"})]),
-        _completion(tool_calls=[_tool_call("chart_1", RENDER_CHART_TOOL, {
-            "chart_type": "histogram",
-            "source_call_id": "query_1",
-            "value_field": "score",
-            "title": "Score distribution",
-        })]),
-        _completion(content="The scores are distributed across these bins."),
-    ])
-
-    with patch("game_market_chatbot.agent.chat.dispatch", return_value=rows):
-        response = chat([{"role": "user", "content": "Show score distribution"}], client=client)
-
-    spec = response.chart_spec
-    assert spec["chart_type"] == "histogram"
-    assert len(spec["data"]) == expected_bins
-    assert sum(row["count"] for row in spec["data"]) == row_count
-    assert spec["x_field"] == "bin_start"
-    assert spec["x_end_field"] == "bin_end"
-    assert spec["y_field"] == "count"
-
-
-def test_histogram_rejects_missing_or_non_numeric_source_values():
-    args = {
-        "chart_type": "histogram",
-        "source_call_id": "query_1",
-        "value_field": "score",
-        "title": "Score distribution",
-    }
-    with pytest.raises(ValueError, match="earlier query result"):
-        normalise_chart_spec(args, {"other_query": [{"score": 1}]})
-    with pytest.raises(ValueError, match="no finite numeric values"):
-        normalise_chart_spec(args, {"query_1": [{"score": True}, {"score": "2"}]})
-
-
-def test_histogram_constant_values_produce_one_nonzero_width_bin():
-    spec = normalise_chart_spec(
-        {
-            "chart_type": "histogram",
-            "source_call_id": "query_1",
-            "value_field": "score",
-            "title": "Constant scores",
-        },
-        {"query_1": [{"score": 5}] * 100},
-    )
-
-    assert len(spec["data"]) == 1
-    assert spec["data"][0]["bin_start"] < 5 < spec["data"][0]["bin_end"]
-    assert spec["data"][0]["count"] == 100
-
-
-def test_chart_spec_tolerates_json_string_data():
-    """data passed as a JSON string (instead of a list) is parsed."""
-    chart_args = {
-        "chart_type": "pie",
-        "data": json.dumps([{"publisher_class": "Indie", "game_count": 5}]),
-        "x_field": "publisher_class",
-        "y_field": "game_count",
-        "title": "Games by publisher class",
-    }
-    client = MockClient(script=[
-        _completion(tool_calls=[_tool_call("call_1", RENDER_CHART_TOOL, chart_args)]),
-        _completion(content="Chart attached."),
-    ])
-
-    with patch("game_market_chatbot.agent.chat.dispatch"):
-        response = chat([{"role": "user", "content": "Pie chart please"}], client=client)
-
-    assert response.chart_spec["data"] == [{"publisher_class": "Indie", "game_count": 5}]
-    assert response.chart_spec["chart_type"] == "pie"
-
 
 def test_compose_response_preserves_text_chart_text_order():
     chart_args = {
@@ -295,26 +212,6 @@ def test_compose_response_preserves_text_chart_text_order():
         block["content"] for block in (blocks[0], blocks[2], blocks[4])
     )
 
-
-@pytest.mark.parametrize(
-    "data",
-    [
-        [{"genre": "RPG", "copies": float("nan")}],
-        [{"genre": "RPG", "copies": "12"}],
-        [{"genre": "RPG"}],
-    ],
-)
-def test_chart_specs_reject_invalid_values(data):
-    with pytest.raises(ValueError):
-        normalise_chart_spec({
-            "chart_type": "bar",
-            "data": data,
-            "x_field": "genre",
-            "y_field": "copies",
-            "title": "Copies by genre",
-        })
-
-
 def test_tool_error_is_fed_back_and_recovered():
     """
     When a tool raises (e.g. invalid SQL), the error is returned to the
@@ -340,7 +237,6 @@ def test_tool_error_is_fed_back_and_recovered():
     tool_message = client.completions.calls[1]["messages"][-1]
     assert tool_message["role"] == "tool"
     assert "error" in json.loads(tool_message["content"])
-
 
 def test_tool_round_limit_returns_fallback_text():
     """A model stuck in a tool loop is cut off after MAX_TOOL_ROUNDS."""
@@ -416,34 +312,3 @@ def test_chat_logs_tool_error_status(caplog):
 
     tool_record = next(r for r in caplog.records if r.message == "tool_call")
     assert tool_record.status == "error"
-
-
-# ---------------------------------------------------------------------------
-# Tests — render_chart tool registration
-# ---------------------------------------------------------------------------
-
-def test_render_chart_tool_is_registered_but_not_dispatchable():
-    """
-    render_chart travels with TOOLS so the model can call it, but it is
-    excluded from the dispatcher — execution is the UI layer's job.
-    """
-    names = [t["function"]["name"] for t in TOOLS]
-    assert RENDER_CHART_TOOL in names
-    assert COMPOSE_RESPONSE_TOOL in names
-
-    with pytest.raises(ValueError, match="Unknown tool"):
-        dispatch(RENDER_CHART_TOOL, {})
-
-
-def test_render_chart_tool_schema_has_required_fields():
-    definition = next(
-        t for t in TOOLS if t["function"]["name"] == RENDER_CHART_TOOL
-    )
-    params = definition["function"]["parameters"]
-    assert set(params["required"]) == {"chart_type", "title"}
-    assert {"data", "x_field", "y_field", "source_call_id", "value_field"}.issubset(
-        params["properties"]
-    )
-    assert params["properties"]["chart_type"]["enum"] == [
-        "bar", "line", "scatter", "pie", "histogram",
-    ]

@@ -6,7 +6,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from game_market_chatbot.agent.chat import AgentResponse
-from game_market_chatbot.api.models import ChartSpecModel
 from game_market_chatbot.api import routes
 from game_market_chatbot.api.app import create_app
 
@@ -78,98 +77,30 @@ def test_chat_forwards_transcript_and_serializes_chart_spec(
     }
 
 
-@pytest.mark.parametrize(
-    "chart_spec",
-    [
-        {
-            "chart_type": "bar",
-            "data": [{"genre": "RPG", "copies": float("nan")}],
-            "x_field": "genre",
-            "y_field": "copies",
-            "title": "Invalid value",
-        },
-        {
-            "chart_type": "scatter",
-            "data": [{"x": "one", "y": 2}],
-            "x_field": "x",
-            "y_field": "y",
-            "title": "Invalid x value",
-        },
-        {
-            "chart_type": "pie",
-            "data": [{"label": "A", "value": -1}],
-            "x_field": "label",
-            "y_field": "value",
-            "title": "Negative slice",
-        },
-    ],
-)
-def test_chart_response_model_rejects_invalid_values(chart_spec: dict[str, Any]) -> None:
-    with pytest.raises(ValueError):
-        ChartSpecModel.model_validate(chart_spec)
-
-
-def test_chart_response_model_limits_row_count() -> None:
-    chart_spec = {
-        "chart_type": "bar",
-        "data": [{"label": str(index), "value": index} for index in range(51)],
+def test_chat_returns_500_when_agent_chart_spec_is_invalid(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    invalid_chart = {
+        "chart_type": "pie",
+        "data": [{"label": "A", "value": -1}],
         "x_field": "label",
         "y_field": "value",
-        "title": "Too many rows",
+        "title": "Negative slice",
     }
+    monkeypatch.setattr(
+        routes,
+        "chat",
+        lambda _messages: AgentResponse(text="Chart", chart_spec=invalid_chart),
+    )
+    client = TestClient(create_app(cors_origins=[]), raise_server_exceptions=False)
 
-    with pytest.raises(ValueError):
-        ChartSpecModel.model_validate(chart_spec)
+    response = client.post(
+        "/api/chat",
+        json={"messages": [{"role": "user", "content": "hello"}]},
+    )
 
-
-def test_histogram_chart_response_model_accepts_numeric_intervals() -> None:
-    chart_spec = {
-        "chart_type": "histogram",
-        "data": [
-            {"start": 0, "end": 5, "count": 3},
-            {"start": 5, "end": 10, "count": 7},
-        ],
-        "x_field": "start",
-        "x_end_field": "end",
-        "y_field": "count",
-        "title": "Score distribution",
-    }
-
-    assert ChartSpecModel.model_validate(chart_spec).x_end_field == "end"
-
-
-def test_histogram_chart_response_model_rejects_overlapping_intervals() -> None:
-    chart_spec = {
-        "chart_type": "histogram",
-        "data": [
-            {"start": 0, "end": 6, "count": 3},
-            {"start": 5, "end": 10, "count": 7},
-        ],
-        "x_field": "start",
-        "x_end_field": "end",
-        "y_field": "count",
-        "title": "Invalid distribution",
-    }
-
-    with pytest.raises(ValueError, match="non-overlapping"):
-        ChartSpecModel.model_validate(chart_spec)
-
-
-def test_histogram_chart_response_model_rejects_more_than_20_bins() -> None:
-    chart_spec = {
-        "chart_type": "histogram",
-        "data": [
-            {"start": index, "end": index + 1, "count": 1}
-            for index in range(21)
-        ],
-        "x_field": "start",
-        "x_end_field": "end",
-        "y_field": "count",
-        "title": "Too many bins",
-    }
-
-    with pytest.raises(ValueError, match="20 bins"):
-        ChartSpecModel.model_validate(chart_spec)
+    assert response.status_code == 500
+    assert "Negative slice" not in response.text
 
 
 def test_chat_transcripts_are_forwarded_independently(
